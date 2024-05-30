@@ -1,0 +1,100 @@
+Appendix A6.5: Enrichment Analysis on Curated Gene Sets
+
+##################################################
+## Project: Time Series - Gene Expression - E-MEXP-3850
+## Script purpose: Enrichment anaylsis on curated gene sets
+## Date: July 8, 2022
+## Author: Ege Ulgen
+##################################################
+
+library(TTCA)
+library(Biobase)
+
+dir.create("output/curated_enrichment/")
+
+# input data --------------------------------------------------------------
+proset <- readRDS("data/mexp3850_processed.RDS")
+
+### TTCA result
+TTCA_result <- readRDS("output/TTCA_result.RDS")
+
+### Gene sets
+all_gsets <- readRDS("data/all_gene_sets.RDS")
+
+# discard genes not in array
+all_gsets <- all_gsets[all_gsets$Gene %in% fData(proset)$SYMBOL, ]
+table(all_gsets$Gene_set)
+
+background_genes <- fData(proset)$SYMBOL
+background_genes <- unique(background_genes[!is.na(background_genes)])
+
+
+# function for enrichment ------------------------------------------------
+simple_ORA <- function(all_gsets, chosen_genes, background_genes, filename) {
+    
+    all_gset_names <- unique(all_gsets$Gene_set)
+    
+    enr_result <- data.frame()
+    for (gset in all_gset_names) {
+        
+        term_genes <- unique(all_gsets$Gene[all_gsets$Gene_set == gset])
+        
+        term_genes_selected <- sum(chosen_genes %in% term_genes)
+        term_genes_in_pool <- sum(term_genes %in% background_genes)
+        tot_genes_in_pool <- length(background_genes)
+        non_term_genes_in_pool <- tot_genes_in_pool - term_genes_in_pool
+        num_selected_genes <- length(chosen_genes)
+        
+        p_val <- stats::phyper(term_genes_selected - 1, term_genes_in_pool,
+                               non_term_genes_in_pool, num_selected_genes,
+                               lower.tail = FALSE)
+        
+        # Fold enrinchment
+        A <- length(intersect(chosen_genes, term_genes)) / length(chosen_genes)
+        B <- length(intersect(background_genes, term_genes))/ length(background_genes)
+        
+        tmp <- data.frame(Gene_set = gset, 
+                          Fold_Enrichment = A / B, p = p_val, 
+                          genes = paste(chosen_genes[chosen_genes %in% term_genes], collapse = ";"))
+        enr_result <- rbind(enr_result, tmp)
+    }
+    enr_result <- enr_result[order(enr_result$p), ]
+    enr_result$FDR <- p.adjust(enr_result$p, method = "fdr") 
+    enr_result <- enr_result[, c("Gene_set", "Fold_Enrichment", "genes", "p", "FDR")]
+    
+    if (!missing(filename))
+        write.csv(enr_result, file.path("output", "curated_enrichment", filename), row.names = FALSE)
+    return(enr_result)
+}
+
+# Enrichment analyses -----------------------------------------------------
+
+# Consensus
+simple_ORA(all_gsets, chosen_genes = TTCA_result$gene_name[TTCA_result$Pval_ConsensusScore < 0.05], background_genes,
+           filename = "consensus_curated_enr.csv")
+
+# Early
+simple_ORA(all_gsets, chosen_genes = TTCA_result$gene_name[TTCA_result$Pval_earlyResponse < 0.05], background_genes,
+           filename = "early_curated_enr.csv")
+
+# Middle
+simple_ORA(all_gsets, chosen_genes = TTCA_result$gene_name[TTCA_result$Pval_middleResponse < 0.05], background_genes,
+           filename = "middle_curated_enr.csv")
+
+# Late
+simple_ORA(all_gsets, chosen_genes = TTCA_result$gene_name[TTCA_result$Pval_lateResponse < 0.05], background_genes,
+           filename = "late_curated_enr.csv")
+
+# Complete
+simple_ORA(all_gsets, chosen_genes = TTCA_result$gene_name[TTCA_result$Pval_completeResponse < 0.05], background_genes,
+           filename = "complete_curated_enr.csv")
+
+
+# MaxDist
+simple_ORA(all_gsets, chosen_genes = TTCA_result$gene_name[TTCA_result$Pval_MaxDist < 0.05], background_genes,
+           filename = "MaxDist_curated_enr.csv")
+
+# Dynamic
+simple_ORA(all_gsets, chosen_genes = TTCA_result$gene_name[TTCA_result$Pval_Dynamic < 0.05], background_genes,
+           filename = "Dynamic_curated_enr.csv")
+
