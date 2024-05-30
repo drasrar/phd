@@ -1,0 +1,62 @@
+################################################## 
+## Project: GEO datasets ## Script purpose: Normalization for GSE13904 
+################################################## 
+
+# BiocManager::install("preprocessCore")  
+library(GEOquery) library(limma) 
+library(preprocessCore)  
+options('download.file.method.GEOquery' = 'wget')  
+# load series and platform data from GEO 
+gset <- getGEO("GSE13904", GSEMatrix = TRUE, getGPL = FALSE) 
+length(gset) 
+gset <- gset[[1]] 
+
+ex_org <- exprs(gset)  
+# quantile normalization ex <- normalize.quantiles(ex_org, copy = TRUE) colnames(ex) 
+<- colnames(ex_org) rownames(ex) <- rownames(ex_org)  
+# log2 transform (if necessary) 
+qx <- as.numeric(quantile(ex, c(0., 0.25, 0.5, 0.75, 0.99, 1.0), na.rm=T)) 
+LogC <- (qx[5] > 100) ||   
+(qx[6]-qx[1] > 50 && qx[2] > 0) 
+if (LogC) { ex[which(ex <= 0)] <- NaN 
+ex <- log2(ex) }  
+# box-and-whisker plot 
+par(mar=c(7,4,2,1)) 
+title <- paste ("GSE13904", "/", annotation(gset), sep ="") 
+boxplot(ex, boxwex = 0.7, notch = T, main = title, outline = FALSE, las = 2)   
+dir.create("GSE13904_data") 
+write.csv(ex, file.path("GSE13904_data", "GSE13904_expression.csv")) 
+write.csv(pData(gset), file.path("GSE13904_data", "GSE13904_phenotype.csv")) 
+write.csv(fData(gset), file.path("GSE13904_data", "GSE13904_features.csv")) 
+
+This R code performs several data preprocessing and analysis tasks on gene expression data retrieved from the Gene Expression Omnibus (GEO) database. Here's a step-by-step explanation of what each part of the code does:
+
+1. Install and load necessary libraries:
+   - The code begins by installing and loading three R libraries: `preprocessCore`, `GEOquery`, and `limma`. These libraries are required for various data manipulation and analysis tasks.
+
+2. Set options for downloading files:
+   - The `options` function is used to set a specific method for downloading files when using the `GEOquery` library. In this case, it sets the download method to 'wget', which is a command-line utility for downloading files.
+
+3. Retrieve data from GEO:
+   - The `getGEO` function is used to retrieve gene expression data associated with the GEO accession number "GSE13904". It specifies that it should fetch the GSEMatrix (gene expression matrix) and not the platform data (getGPL = FALSE). The result, `gset`, is a list.
+
+4. Extract gene expression data:
+   - The code extracts the gene expression data from the `gset` list by accessing the first element (`gset[[1]]`). This data is stored in the variable `ex_org`.
+
+5. Quantile normalisation:
+   - Quantile normalisation is applied to the gene expression data in `ex_org` using the `normalize.quantiles` function. The normalised data is stored in the variable `ex`. This step helps to make the gene expression data comparable across samples.
+
+6. Log2 transformation (if necessary):
+   - The code checks if log2 transformation is needed by calculating specific quantiles (`qx`) of the data. If the difference between the 75th and 25th percentiles is greater than 50 and the 25th percentile is greater than 0, or if the 99th percentile is greater than 100, log2 transformation is performed on the data. This step is used to handle data that may have low values or extreme outliers.
+
+The code first creates a vector of quantiles, qx. The first five values are 0, 0.25, 0.5, 0.75 and 1, respectively; the sixth value is NaN because it is impossible to calculate a quantile for an infinite number of values (the function returns an error).
+Next, the code checks if any elements in ex have a value less than or equal to zero by using which(). If so, then those elements will be set to NaN with log2(). Finally, the code calculates ex as log2(ex) , which means taking each element in ex and dividing it by two until all elements have been calculated. The code calculates the quantiles of a numeric vector ex. The first line creates a new variable qx that is calculated by taking the fifth percentile of ex, then dividing it by 100 and rounding to two decimal places. The following line calculates the logarithm of ex, which is stored in the variable LogC. If the value in LogC is true, then we know that ex was not negative and should be rounded down to zero. If there are any values less than zero, they are set to NaN so that they do not contribute to our final results.
+
+7. Create a box-and-whisker plot:
+   - The code sets up a box-and-whisker plot of the gene expression data using the `boxplot` function. It specifies various plot settings, including the title, notch display, and other plot attributes.
+
+8. Create a directory and save data:
+   - The code creates a directory named "GSE13904_data" to store the processed data files. It uses the `dir.create` function for this purpose.
+
+9. Save data as CSV files:
+   - The gene expression data (`ex`), phenotype data (`pData(gset)`), and feature data (`fData(gset)`) are saved as CSV files in the "GSE13904_data" directory using the `write.csv` function. These CSV files can be used for further analysis or visualization.
