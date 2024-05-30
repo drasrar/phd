@@ -1,1 +1,224 @@
+#Data Frame Configuration
+
+# Cell 1 and Cell 2
+#A series of commands to ensure that the Python package manager, pip, and the setuptools package are updated to their latest versions, and then to install the TensorFlow #library.
+## Python Library Installations
+## 1. `!python3 -m pip install pandas`
+   - Installs the `pandas` library, a powerful tool for data manipulation and analysis in Python.
+## 2. `!python3 -m pip install numpy`
+   - Installs the `numpy` library, essential for numerical computations in Python. It supports arrays (including matrices) and various mathematical functions for array operations.
+## 3. `!pip install --upgrade decorator==4.0.2`
+   - Updates (or installs if not present) the `decorator` library to version 4.0.2. `decorator` simplifies the usage and creation of decorators in Python, allowing modification or extension of function/method behavior without permanent changes.
+## 4. `!python3 -m pip install scikit-learn`
+   - Installs `scikit-learn`, a widely-used Python library for machine learning. It offers simple and efficient tools for data mining and analysis.
+## 5. `!python3 -m pip install matplotlib`
+   - Installs `matplotlib`, a Python plotting library enabling the creation of interactive and static visualizations.
+## 6. `!python3 -m pip install seaborn`
+   - Installs `seaborn`, a statistical data visualization library based on `matplotlib`. It provides a high-level interface for creating attractive and informative statistical graphics.
+## The prefix `!python3 -m` ensures the use of the Python 3 interpreter's associated pip, helpful in environments with both Python 2 and Python 3 installations. This specification ensures the execution of pip module for Python 3 explicitly.
+
+#Cell-1
+##These are a series of commands meant to be executed in a Jupyter notebook or Google Colab, where code is run line-by-line. The commands are using the pip package installer #to install and manage Python libraries. 
+!python3 -m pip install pandas
+!python3 -m pip install numpy
+!python3 -m pip install scikit-learn
+!python3 -m pip install matplotlib
+!python3 -m pip install seaborn                 
+
+#Cell-2 
+#A series of commands to ensure that the Python package manager, pip, 
+#and the setuptools package are updated to their latest versions, and then to install the TensorFlow library.
+!python3 -m pip install --upgrade pip
+!python3 -m pip install --upgrade setuptools
+!python3 -m pip install tensorflow
+
+###################################################
+
+#Cell 3 and 4
+The provided code is primarily about importing various libraries and modules necessary for data processing, machine learning, and data visualization. Following the imports, a brief bit of code loads a CSV file into a pandas DataFrame and displays its first few rows. Dimensions of the CSV file is also shown.The code sets up a range of tools and libraries often used in data analysis and machine learning tasks and ends by loading and displaying a dataset.
+
+#1. `import pandas as pd`
+   - Imports the `pandas` library and gives it the alias `pd`. Pandas is a widely used library for data manipulation and analysis.
+
+#2. `import numpy as np`
+   - Imports the `numpy` library and gives it the alias `np`. NumPy is a library for numerical operations and working with arrays in Python.
+
+#3. `np.random.seed(0)`
+   - Sets a seed for the random number generator in NumPy. This ensures that any random operation performed by NumPy will have the same result every time the code is run, which is essential for reproducibility in experiments.
+
+#4. `from tensorflow.random import set_seed`
+   - Imports the `set_seed` function from the random module of the `tensorflow` library.
+
+#5. `set_seed(0)`
+   - Sets a seed for the random number generator in TensorFlow. Like the NumPy seed, this ensures reproducibility for any TensorFlow operations that involve randomness.
+
+#6. `import pandas as pd`
+   - This line is redundant since `pandas` was already imported at the beginning.
+
+#7. `from tensorflow import keras`
+   - Imports the `keras` module from `tensorflow`. Keras is an open-source software library that provides a Python interface for artificial neural networks using TensorFlow.
+
+#8. `from sklearn.preprocessing import StandardScaler`
+   - Imports the `StandardScaler` class from `sklearn`, which is used for scaling features so they have a mean of 0 and a standard deviation of 1.
+
+#9. `from sklearn.decomposition import PCA`
+   - Imports the `PCA` (Principal Component Analysis) class from `sklearn`, for dimensionality reduction.
+
+#10. `from tensorflow.keras import layers`
+   - Imports the `layers` module from Keras in TensorFlow, providing building blocks for constructing neural networks.
+
+#11. `from sklearn.metrics import accuracy_score, confusion_matrix`
+   - Imports two functions from `sklearn` used for evaluating machine learning models: `accuracy_score` for calculating the accuracy, and `confusion_matrix` for generating a confusion matrix.
+
+#12. `import matplotlib.pyplot as plt`
+   - Imports the `pyplot` module from `matplotlib` and gives it the alias `plt`. Matplotlib is a plotting library for Python.
+
+#13. `import seaborn as sns`
+   - Imports the `seaborn` library and gives it the alias `sns`. Seaborn is a data visualization library based on Matplotlib.
+
+#14. `from mpl_toolkits.mplot3d import Axes3D`
+   - Imports the `Axes3D` class, which is used for creating 3D plots in Matplotlib.
+
+#15. `from sklearn.utils import class_weight`
+   - Imports the `class_weight` utility from `sklearn`, which can be useful for handling imbalanced datasets.
+
+#16. `df = pd.read_csv('./dftr.csv')`
+   - Reads a CSV file named "dftr.csv" from the current directory (or a relative path) and loads its content into a pandas DataFrame called `df`.
+
+#17. `df.head()`
+   - Displays the first five rows of the `df` DataFrame. In an interactive environment like a Jupyter notebook, the output of this command is shown as a table.
+
+#Cell-3
+#from google.colab import drive drive.mount('/content/drive')
+root_folder = '/content/drive/MyDrive/' Mounted at /content/drive
+ 
+#Cell-4
+import pandas as pd
+import numpy as np np.random.seed(0)
+from tensorflow.random import set_seed set_seed(0)
+
+import pandas as pd
+from tensorflow import keras
+from sklearn.preprocessing import StandardScaler from sklearn.decomposition import PCA
+from tensorflow.keras import layers
+from sklearn.metrics import accuracy_score, confusion_matrix import matplotlib.pyplot as plt
+import seaborn as sns
+from mpl_toolkits.mplot3d import Axes3D from sklearn.utils import class_weight
+
+dft_cvs_path = '/content/drive/MyDrive/upwork_Projects_files/Gene_ML_Project/dftr.csv' #Path to 
+dftr.csv file df = pd.read
+df = pd.read_csv(dft_cvs_path)
+df.head()
+
+################################
+
+#### Cell-5 
+##The code converts a list of integers into a `numpy` array and then checks the shape (or dimensions) of that array
+
+#1. `import numpy as np`
+   - This imports the `numpy` library and assigns it the alias `np`. `numpy` is a library in Python that supports large, multi-dimensional arrays and matrices, along with a collection of mathematical functions to operate on these arrays.
+
+#2. `y = [0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]`
+   - This creates a list named `y` that contains a sequence of integers. From the list, it looks like there are 6 zeros and 23 ones.
+
+#3. `y = np.array(y)`
+   - This line converts the list `y` into a `numpy` array. Arrays in `numpy` offer more functionality and can be processed faster than regular Python lists, especially for numerical operations.
+
+#4. `y.shape`
+   - This retrieves the shape of the `numpy` array `y`. The shape is a tuple that provides the dimensions of the array. For a 1-dimensional array like `y`, the shape will return a tuple with one value, representing the number of elements in the array. So for this particular array, the shape will return `(29,)`, indicating that there are 29 elements in this 1-dimensional array.1. `import numpy as np`
+   - This imports the `numpy` library, giving it the alias `np`. `numpy` is a fundamental package for scientific computing in Python and provides support for arrays, matrices, and various mathematical functions.
+
+#5. `y = df.Label`
+   - This assumes that `df` is a pandas DataFrame that has already been defined earlier in your code. This line extracts the column named "Label" from the `df` DataFrame and assigns it to the variable `y`. Essentially, `y` now contains the data from the "Label" column of `df`.
+
+#6. `y = np.array(y)`
+   - This line converts the pandas Series `y` (which was extracted from the DataFrame) into a numpy array. Numpy arrays are often used in data science and machine learning tasks because of their efficient storage and computational capabilities.
+
+#7. `y.shape`
+   - This returns the shape of the `numpy` array `y`. The shape provides the dimensions of the array. If `y` is a 1-dimensional array, the shape will return a tuple with one value, representing the number of elements (rows) in the array. For instance, if there were 100 rows in the "Label" column, `y.shape` would return `(100,)`.
+
+#8. `df.drop("Label", axis='columns')`
+   - This line of code drops (or removes) the "Label" column from the `df` DataFrame. The argument `axis='columns'` specifies that the operation should be performed on columns. Note that this operation doesn't modify the original `df` DataFrame in place. Instead, it returns a new DataFrame with the "Label" column removed. If you wanted to reflect this change in the original `df`, you would need to reassign it, like: `df = df.drop("Label", axis='columns')`.
+
+
+
+import numpy as np
+y = [0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+y = np.array(y) y.shape(29,)
+
+import numpy as np y = df.Label y = np.array(y) y.shape
+
+df.drop("Label", axis='columns')
+
+#####################################
+
+#### Cell-6 
+
+#The line of code is used to extract the data from a pandas DataFrame and represent it as a numpy array. This is to prepare data for the machine learning algorithms. The #ultimate goal of performing standardisation is to bring down all the features to a common scale without distorting the differences in the range of the values. Data # # #standardisation helps improve the data quality by transforming and standardising it.
+
+# X = df.values`
+#- `df`: The pandas DataFrame that has already been defined or loaded earlier in the code.
+#- `.values`: This is an attribute of the pandas DataFrame. When accessed, it returns the data of the DataFrame as a numpy array. The resulting numpy array will not have #the column names or index values of the DataFrame, only the raw data.
+#- `X`: This is a variable assigned to the numpy array. After this line of code, `X` will contain the data from `df` in the form of a numpy array.
+
+#To give a practical example, if `df` looks like this:
+
+#```
+#     A  B
+#   0  1  4
+#   1  2  5
+#   2  3  6
+#   ```
+
+# Then, `X` will be a numpy array that looks like this:
+#```
+#array([[1, 4],
+#           [2, 5],
+#           [3, 6]])
+#``` 
+
+
+X = df.values print(X.shape) (29, 20207)
+
+#######################################
+
+####Cell-7
+
+#This code pertains to the process of standardising (or scaling) data features. The code standardises the features of the data in `X`. Standardising data (making it have #zero mean and unit variance) is a common preprocessing step in many machine learning algorithms because it can help the algorithm converge more quickly and can sometimes #lead to better performance. The ultimate goal to perform standardisation is to bring down all the features to a common scale without distorting the differences in the #range of the values. Data standardisation helps improve the quality of the data through transformation. 
+
+#1. `from sklearn.preprocessing import StandardScaler`:
+   - This imports the `StandardScaler` class from the `sklearn.preprocessing` module. The `StandardScaler` is part of the `scikit-learn` library, which is a popular machine learning library in Python.
+
+#2. `scaler = StandardScaler()`:
+   - Here, an instance of the `StandardScaler` class is created and assigned to the variable `scaler`. This instance will be used to apply the scaling transformation to the data.
+
+#3. `X = scaler.fit_transform(X)`:
+   - This line does two main things:
+     1. `fit`: This computes the mean and standard deviation of each feature in `X` for later scaling. Essentially, the `scaler` learns the parameters it needs to apply the standard scaling.
+     2. `transform`: This scales the data by subtracting the mean and then dividing by the standard deviation. Essentially, it transforms the dataset `X` such that each feature (column) will have a mean of 0 and a standard deviation of 1.
+   - After this operation, `X` will be a numpy array where the features (columns) are standardised.
+
+#4. `X`:
+   - This simply represents the standardised version of the dataset. In an interactive environment, like a Jupyter notebook, writing the variable name like this results in a display of its contents.
+
+from sklearn.preprocessing import StandardScaler scaler = StandardScaler()
+X = scaler.fit_transform(X) 
+X
+
+## out out for Cell7
+## Output
+
+```python
+array([[-0.82382452,  0.2450783 , 0.49685634, ..., 1.24174727, 0.40016561, 0.03044505],
+       [ 1.15296482,  0.53517098, -0.20905195, ..., -0.05426659, -0.23418052, -0.64871372],
+       [-2.00989813,  2.75921489, -1.3302004 , ..., -1.90571496,  0.40016561, -0.37705021],
+       ...,
+       [ 0.64464756, 1.06700757, 0.41380831, ..., 1.70460936, -1.20435695, 0.09836093],
+       [ 0.75760695,  1.30875147, -0.29209998, ..., 0.31602308, -2.51036368, 2.81499601],
+       [-0.03310879,  0.2450783 , 0.66295241, ..., -0.70227352, -0.6073253 , -1.19204074]])
+
+
+
+
+
 
