@@ -1,4 +1,4 @@
-## APPENDIX A, Contians the Computer Code for the PhD Thesis of Dr Asrar Rashid
+## APPENDIX A, contains the Computer Code for the PhD Thesis of Dr Asrar Rashid
 
 ## Appendix A1: GSE Quantile Normalisation Script
 ## Appendix A2: Machine Learning code
