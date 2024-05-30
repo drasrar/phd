@@ -1,0 +1,132 @@
+Appendix A8: Enrichment plots
+##################################################
+## Time Course Gene Expression
+##  Functions to produce enrichment 
+## plots 1) dot_plot, and 2) bar_plot
+##################################################
+
+# if necessary, install ggplot2
+#install.packages("ggplot2")
+
+# Function definitions ----------------------------------------------------
+dot_plot <- function(enrichment_result, top_n = 25) {
+    require(ggplot2)
+    
+    enrichment_result <- enrichment_result[order(enrichment_result$FDR, decreasing = FALSE), ]
+    
+    top_n <- ifelse(top_n <= nrow(enrichment_result), top_n, nrow(enrichment_result))
+    for_plot_df <- enrichment_result[1:top_n, ]
+    for_plot_df$pathwayname <- factor(for_plot_df$pathwayname, levels = rev(for_plot_df$pathwayname))
+    
+    scientific_10 <- function(x) {
+        parse(text=gsub("e", " %*% 10^", scales::scientific_format()(x)))
+    }
+    
+    g <- ggplot(for_plot_df, aes(Oddsratio, pathwayname))
+    g <- g + geom_point(aes(color = FDR, size = Oddsratio))
+    g <- g + theme_bw()
+    g <- g + theme(axis.text.x = element_text(size = 10),
+                   axis.text.y = element_text(size = 10),
+                   axis.title.y = element_blank(),
+                   plot.title = element_blank())
+    g <- g + xlab("Odds Ratio")
+    g <- g + labs(size = "Odds Ratio", color = "FDR")
+    g <- g + scale_color_continuous(low = "red", high = "#f5efef", labels = scientific_10)
+    g
+}
+
+bar_plot <- function(enrichment_result, top_n = 25) {
+    require(ggplot2)
+    
+    enrichment_result <- enrichment_result[order(enrichment_result$FDR, decreasing = FALSE), ]
+    
+    top_n <- ifelse(top_n <= nrow(enrichment_result), top_n, nrow(enrichment_result))
+    for_plot_df <- enrichment_result[1:top_n, ]
+    for_plot_df$pathwayname <- factor(for_plot_df$pathwayname, levels = rev(for_plot_df$pathwayname))
+    
+    scientific_10 <- function(x) {
+        parse(text=gsub("e", " %*% 10^", scales::scientific_format()(x)))
+    }
+    
+    g <- ggplot(for_plot_df, aes(pathwayname, Oddsratio))
+    g <- g + geom_bar(aes(fill = FDR), stat = "identity")
+    g <- g + theme_bw()
+    g <- g + coord_flip()
+    g <- g + theme(axis.text.x = element_text(size = 10),
+                   axis.text.y = element_text(size = 10),
+                   axis.title.y = element_blank(),
+                   plot.title = element_blank())
+    g <- g + ylab("Odds Ratio")
+    g <- g + scale_fill_continuous(low = "red", high = "#f5efef", labels = scientific_10)
+    g
+}
+
+# Example plots -----------------------------------------------------------
+### Read and modify (if necessary) example data
+enrichment_df <- read.csv("~/Desktop/Dropbox/My Work/My Research/Asrar_PhD/Rwork/Enrichment_plots/PELOD_0hrs_enrichment_results.csv")
+
+# fix pathwayid and pathwayname
+enrichment_df$pathwayid <- sapply(enrichment_df$pathwayid, function(x) unlist(strsplit(x, "%"))[3])
+enrichment_df$pathwayname <- sapply(enrichment_df$pathwayname, function(x) paste(unlist(strsplit(x, "%"))[1:2], collapse = "_"))
+
+# filter for selected significance levels
+enrichment_df <- enrichment_df[enrichment_df$Pvalue <= 0.001, ]
+enrichment_df <- enrichment_df[enrichment_df$FDR <= 0.01, ]
+
+
+### Default dot plot (top 25 pathways)
+dot_plot(enrichment_result = enrichment_df)
+# y axis lists pathways/gene set terms
+# x axis indicates Odds Ratio (the magnitude of enrichment)
+# size of dots indicates Odds Ratio
+# color indicates FDR (the more red, the smaller and the more significant)
+
+### Default bar plot (top 25 pathways)
+bar_plot(enrichment_result = enrichment_df)
+# y axis lists pathways/gene set terms
+# x axis indicates Odds Ratio (the magnitude of enrichment)
+# color indicates FDR (the more red, the smaller and the more significant)
+
+### Increase/decrease the number of displayed top pathways
+dot_plot(enrichment_result = enrichment_df, top_n = 50)
+
+bar_plot(enrichment_result = enrichment_df, top_n = 10)
+
+### To plot all pathways (not recommended), set `top_n` to Inf
+bar_plot(enrichment_result = enrichment_df, top_n = Inf)
+
+This R code defines two functions, `dot_plot` and `bar_plot`, which are used to create enrichment plots for pathway analysis. These plots are typically used in bioinformatics and genomics to visualise enrichment analysis results, where you assess whether certain biological pathways or sets of genes are enriched in a given dataset. Below is an explanation of the code:
+
+1. **Function Definitions (`dot_plot` and `bar_plot`):**
+   - The code defines two functions, `dot_plot` and `bar_plot`, which are intended to produce enrichment plots for visualising enrichment analysis results.
+
+2. **Install ggplot2 (if necessary):**
+   - This line of code is commented out with a `#`. If the `ggplot2` library is not already installed in your R environment, you can uncomment this line and run it to install the `ggplot2` package. However, since it's commented out, it won't be executed unless you remove the `#` at the beginning of the line.
+
+3. **`dot_plot` Function:**
+   - The `dot_plot` function is defined to create a dot plot for enrichment analysis results. It takes two arguments: `enrichment_result` (a data frame containing enrichment analysis results) and `top_n` (the number of top pathways to display).
+   - Inside the function, the `ggplot2` library is loaded using `require(ggplot2)`.
+   - The enrichment results are sorted by the False Discovery Rate (FDR) in ascending order (decreasing = FALSE).
+   - The `top_n` variable is used to limit the number of pathways displayed on the plot.
+   - The function defines a custom label formatter (`scientific_10`) to format scientific notation.
+   - A ggplot object is created, specifying aesthetics for the plot, including the x-axis (Odds Ratio), y-axis (pathway name), dot size (Odds Ratio), and dot colour (FDR).
+   - Various plot customisation settings are applied to improve readability and appearance.
+   - Finally, the function returns the ggplot object.
+
+4. **`bar_plot` Function:**
+   - The `bar_plot` function is similar to `dot_plot` but creates a bar plot instead of a dot plot to visualise enrichment analysis results.
+   - It takes the same arguments as `dot_plot`, including `enrichment_result` and `top_n`.
+   - Inside the function, the enrichment results are sorted by FDR in ascending order.
+   - The `top_n` variable limits the number of pathways displayed on the plot.
+   - A ggplot object is created for the bar plot, specifying aesthetics for the x-axis (pathway name), y-axis (Odds Ratio), and bar fill color (FDR).
+   - The plot is customised with various settings to improve appearance.
+   - The function returns the ggplot object.
+
+5. **Example Plots:**
+   - This section provides an example of using the `dot_plot` and `bar_plot` functions with a dataset (`enrichment_df`) containing enrichment analysis results.
+   - It reads the dataset from a CSV file and preprocesses it by modifying the pathway names and filtering for significance levels (P-value and FDR).
+   - It then generates example dot and bar plots with default settings and varies the number of displayed pathways using the `top_n` argument.
+   - The last example sets `top_n` to `Inf` to plot all pathways, but it's noted that plotting all pathways is not recommended due to potential readability issues.
+
+These functions and example plots are useful for visualising and interpreting enrichment analysis results, especially in genomics and biological research, where researchers often want to understand which pathways or gene sets are overrepresented in their data. The plots provide insights into the strength and significance of enrichment for various pathways.
+
