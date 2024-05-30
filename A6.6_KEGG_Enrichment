@@ -1,0 +1,121 @@
+Appendix A6.6: KEGG Enrichment
+
+##################################################
+## Project: Time Series - Gene Expression - E-MEXP-3850
+## Script purpose: Perform enrichment analyses on
+## TTCA results
+## Date: July 8, 2022
+## Author: Ege Ulgen
+##################################################
+
+dir.create("output/GO_BP_enrichment/")
+dir.create("output/KEGG_enrichment/")
+
+# installations -----------------------------------------------------------
+## to install enrichR
+# install.packages("enrichR")
+
+
+# load library ------------------------------------------------------------
+library(enrichR)
+
+# gene set databases on enrichR
+dbs <- listEnrichrDbs()
+head(dbs)
+
+# load TTCA results -------------------------------------------------------
+TTCA_result <- readRDS("output/TTCA_result.RDS")
+
+sig_level <- 0.05
+
+# significant genes for Consensus
+consensus_genes <- TTCA_result$gene_name[TTCA_result$Pval_ConsensusScore < sig_level]
+
+# significant genes for early response
+early_genes <- TTCA_result$gene_name[TTCA_result$Pval_earlyResponse < sig_level]
+
+# significant genes for middle response
+middle_genes <- TTCA_result$gene_name[TTCA_result$Pval_middleResponse < sig_level]
+
+# significant genes for late response
+late_genes <- TTCA_result$gene_name[TTCA_result$Pval_lateResponse < sig_level]
+
+# significant genes for complete response
+complete_genes <- TTCA_result$gene_name[TTCA_result$Pval_completeResponse < sig_level]
+
+# significant genes for Dynamic
+dynamic_genes <- TTCA_result$gene_name[TTCA_result$Pval_Dynamic < sig_level]
+
+# significant genes for MaxDist
+maxdist_genes <- TTCA_result$gene_name[TTCA_result$Pval_MaxDist < sig_level]
+
+
+# perform enrichment analysis on KEGG pathways ----------------------------
+
+KEGG_enr_consensus <- enrichr(genes = consensus_genes, "KEGG_2021_Human")$KEGG_2021_Human
+
+KEGG_enr_early <- enrichr(genes = early_genes, "KEGG_2021_Human")$KEGG_2021_Human
+
+KEGG_enr_middle <- enrichr(genes = middle_genes, "KEGG_2021_Human")$KEGG_2021_Human
+
+KEGG_enr_late <- enrichr(genes = late_genes, "KEGG_2021_Human")$KEGG_2021_Human
+
+KEGG_enr_complete <- enrichr(genes = complete_genes, "KEGG_2021_Human")$KEGG_2021_Human
+
+KEGG_enr_dynamic <- enrichr(genes = dynamic_genes, "KEGG_2021_Human")$KEGG_2021_Human
+
+KEGG_enr_maxdist <- enrichr(genes = maxdist_genes, "KEGG_2021_Human")$KEGG_2021_Human
+
+pdf("output/KEGG_enrichment/KEGG_enrichment_plots.pdf", width = 8, height = 10)
+plotEnrich(KEGG_enr_consensus, showTerms = 25, title = "Consensus")
+plotEnrich(KEGG_enr_early, showTerms = 25, title = "Early Response")
+plotEnrich(KEGG_enr_middle, showTerms = 25, title = "Middle Response")
+plotEnrich(KEGG_enr_late, showTerms = 25, title = "Late Response")
+plotEnrich(KEGG_enr_complete, showTerms = 25, title = "Complete Response")
+plotEnrich(KEGG_enr_dynamic, showTerms = 25, title = "Dynamic")
+plotEnrich(KEGG_enr_maxdist, showTerms = 25, title = "MaxDist")
+dev.off()
+
+write.csv(KEGG_enr_consensus, "output/KEGG_enrichment/consensus_enrichment.csv", row.names = FALSE)
+write.csv(KEGG_enr_early, "output/KEGG_enrichment/early_enrichment.csv", row.names = FALSE)
+write.csv(KEGG_enr_middle, "output/KEGG_enrichment/middle_enrichment.csv", row.names = FALSE)
+write.csv(KEGG_enr_late, "output/KEGG_enrichment/late_enrichment.csv", row.names = FALSE)
+write.csv(KEGG_enr_complete, "output/KEGG_enrichment/complete_enrichment.csv", row.names = FALSE)
+write.csv(KEGG_enr_dynamic, "output/KEGG_enrichment/dynamic_enrichment.csv", row.names = FALSE)
+write.csv(KEGG_enr_maxdist, "output/KEGG_enrichment/maxdist_enrichment.csv", row.names = FALSE)
+
+
+# perform enrichment analysis on GO BP ------------------------------------
+GO_BP_enr_consensus <- enrichr(genes = consensus_genes, "GO_Biological_Process_2021")$GO_Biological_Process_2021
+
+GO_BP_enr_early <- enrichr(genes = early_genes, "GO_Biological_Process_2021")$GO_Biological_Process_2021
+
+GO_BP_enr_middle <- enrichr(genes = middle_genes, "GO_Biological_Process_2021")$GO_Biological_Process_2021
+
+GO_BP_enr_late <- enrichr(genes = late_genes, "GO_Biological_Process_2021")$GO_Biological_Process_2021
+
+GO_BP_enr_complete <- enrichr(genes = complete_genes, "GO_Biological_Process_2021")$GO_Biological_Process_2021
+
+GO_BP_enr_dynamic <- enrichr(genes = dynamic_genes, "GO_Biological_Process_2021")$GO_Biological_Process_2021
+
+GO_BP_enr_maxdist <- enrichr(genes = maxdist_genes, "GO_Biological_Process_2021")$GO_Biological_Process_2021
+
+pdf("output/GO_BP_enrichment/GO_BP_enrichment_plots.pdf", width = 8, height = 10)
+plotEnrich(GO_BP_enr_consensus, showTerms = 25, title = "Consensus")
+plotEnrich(GO_BP_enr_early, showTerms = 25, title = "Early Response")
+plotEnrich(GO_BP_enr_middle, showTerms = 25, title = "Middle Response")
+plotEnrich(GO_BP_enr_late, showTerms = 25, title = "Late Response")
+plotEnrich(GO_BP_enr_complete, showTerms = 25, title = "Complete Response")
+plotEnrich(GO_BP_enr_dynamic, showTerms = 25, title = "Dynamic")
+plotEnrich(GO_BP_enr_maxdist, showTerms = 25, title = "MaxDist")
+dev.off()
+
+write.csv(GO_BP_enr_consensus, "output/GO_BP_enrichment/consensus_enrichment.csv", row.names = FALSE)
+write.csv(GO_BP_enr_early, "output/GO_BP_enrichment/early_enrichment.csv", row.names = FALSE)
+write.csv(GO_BP_enr_middle, "output/GO_BP_enrichment/middle_enrichment.csv", row.names = FALSE)
+write.csv(GO_BP_enr_late, "output/GO_BP_enrichment/late_enrichment.csv", row.names = FALSE)
+write.csv(GO_BP_enr_complete, "output/GO_BP_enrichment/complete_enrichment.csv", row.names = FALSE)
+write.csv(GO_BP_enr_dynamic, "output/GO_BP_enrichment/dynamic_enrichment.csv", row.names = FALSE)
+write.csv(GO_BP_enr_maxdist, "output/GO_BP_enrichment/maxdist_enrichment.csv", row.names = FALSE)
+
+
