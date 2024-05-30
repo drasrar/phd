@@ -1,0 +1,48 @@
+Appendix A7: t-test Comparison of Kwan and Emonts datasets
+
+##################################################
+## Project: Nottingham - Rotterdam Comparison
+## Script purpose: Perform t-tests
+##################################################
+
+data_df <- read.csv("comparison_data.csv")
+
+t.test(data_df$Age..years.~data_df$Hospital)
+
+t.test(data_df$Duration.of.PICU.admission..DAYS.~data_df$Hospital)
+
+t.test(data_df$Median.PRISM.Score~data_df$Hospital)
+
+t.test(data_df$Leucocyte.count...10.9.L.~data_df$Hospital)
+
+t.test(data_df$Platelet.count...10.9.L.~data_df$Hospital)
+
+t.test(data_df$CRP..mmol.L.~data_df$Hospital)
+
+t.test(data_df$Latate..mmol.L.~data_df$Hospital)
+
+t.test(data_df$Base.excess..mmol.L.~data_df$Hospital)
+
+t.test(data_df$Urea..mmol.L.~data_df$Hospital)
+
+t.test(data_df$Potassium..mmol.L.~data_df$Hospital)
+
+t.test(data_df$Bilirubin..micromol.L.~data_df$Hospital)
+
+
+This R code is designed to perform a series of t-tests to compare different variables between two groups or levels of a categorical variable "Hospital." The data is loaded from a CSV file named "comparison_data.csv," and it conducts t-tests for each variable separately. 
+
+Below is an explanation of what each part of the code:
+
+1. Load data:
+   - The code starts by reading a CSV file named "comparison_data.csv" using the `read.csv` function. This file likely contains the dataset for analysis, with columns that include variables of interest and a column named "Hospital," which represents the grouping factor for the t-tests.
+
+2. Perform t-tests:
+   - A series of t-tests are conducted using the `t.test` function for various variables. Each t-test compares the values of a specific variable between the two levels of the "Hospital" variable. Here's the breakdown of each t-test line:
+     - `t.test(data_df$Age..years.~data_df$Hospital)`: This t-test compares the "Age..years." variable between the two levels of "Hospital."
+     - Similar t-tests are performed for other variables, such as "Duration.of.PICU.admission..DAYS.," "Median.PRISM.Score," "Leucocyte.count...10.9.L.," "Platelet.count...10.9.L.," "CRP..mmol.L.," "Lactate..mmol.L.," "Base.excess..mmol.L.," "Urea..mmol.L.," "Potassium..mmol.L.," and "Bilirubin..micromol.L."
+
+Each t-test will calculate and report statistics such as the t-statistic, degrees of freedom, p-value, and confidence interval for the difference in means between the two groups.
+
+This code allows one to assess whether there are statistically significant differences in these variables between the two groups. The results of the t-tests will help you determine whether there are significant differences in the variables of interest based on the grouping variable "Hospital."
+
