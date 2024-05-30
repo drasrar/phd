@@ -1,0 +1,767 @@
+Appendix A3: WGCNA
+
+Code Summary is given below, followed by the full code with commentary
+
+# 	Load GE data
+# 	Finalise GE data
+# 	Load Clinical Trait Data
+# 	Show hierarchical clustering 
+#	Choose Soft-thresholding Power
+#	Network construction and module detection using TOM
+#	Cluster based on specific traits, visualise genes in terms of module assignment and correlation to traits 
+#	Quantify module-trait association by generating module eigengenes (ME)
+#	Relate ME with clinical traits and genome heat maps to show the correlation with each trait
+#	Look at gene relationship to a specific trait, such as weight
+#	Identify genes crucial for a module, known as Module Membership (MM) and how these genes correlate 	with a particular trait, Gene Significance (GS)
+#	Retrieve genes related to trait based on two parameters GS (p-value less than or equal to 0.05) and MM 	(absolute value equal to or greater than 0.5)
+##################################################
+## Project: Dr. Asrar - Time Course Gene Expression
+## Script purpose: Perform WGCNA analysis. Identify
+## strong correlations (positive or negative) between
+## modules and phenotypes
+## with "c2.xls" (updated clinical traits)
+##################################################
+
+# BiocManager::install("impute")
+
+library(gdata)
+library(WGCNA)
+
+# create output directory
+dir.create("outputs")
+
+# if you are using R < 4
+options(stringsAsFactors = FALSE)
+
+# enableWGCNAThreads()
+
+# Load Gene expression data ----------------------------------------------------
+### read excel data
+Data1 <- read.xls("All_P.xlsx", sheet = 1)
+
+### create expression matrix - samples are columns, probes are rows
+DATA <- as.matrix(Data1[-1])
+
+# so that row names are probe IDs
+row.names(DATA) <- Data1[, 1] 
+
+### transpose to create required expression matrix - probes are columns, samples are rows
+datExpr0 <- t(DATA)
+# Preview first 5 probes for first 5 samples
+datExpr0[1:5, 1:5]
+# dimensions of the expression matrix
+# dim() is used to get a quick sense of the structure or size of a dataset in R, especially when working with large datasets and 
+# one wants to know the dimensions without printing the entire dataset to the console
+
+
+dim(datExpr0)
+
+
+## Removing P4_T2 as this is missing all data
+anyNA(datExpr0)
+apply(datExpr0, 1, function(x) all(is.na(x)))
+datExpr0 <- datExpr0[rownames(datExpr0) != "P4_T2", ]
+
+### Hierarchical Clustering of samples to detect outlier(s) on dataset datExpr0
+### Hierarchical clustering is a method that builds a tree (a dendrogram) 
+### of the data that can be useful for visualizing the similarity (or dissimilarity) between different samples.
+
+### hclust is the main function for hierarchical clustering. 
+### Before clustering, the dissimilarity between samples is computed using the dist() function. 
+### The method = "average" indicates that the average linkage method is used to calculate the distance between clusters.
+
+
+sampleTree <- hclust(dist(datExpr0), method = "average")
+
+## The subsequent plot should be saved as a PDF file with the given width and height
+
+pdf("outputs/1_sample_clustering.pdf", width = 9, height = 6)
+
+## The par() function is used to set graphical parameters
+## Here, cex = 0.6 is adjusting the size of symbols and text, making them 60% of the default size 
+## mar = c(0,4,2,0) sets the margins of the plot (bottom, left, top, right)
+
+par(cex = 0.6);
+par(mar = c(0,4,2,0))
+
+## This line plots the dendrogram with the title "Sample clustering to detect outliers.” 
+## Various cex parameters adjust the size of the labels, axis labels, and main titles
+
+plot(sampleTree, main = "Sample clustering to detect outliers", sub="", xlab="", 
+     cex.lab = 1.5, cex.axis = 1.5, cex.main = 2)
+## Closing PDF Device:
+dev.off()
+
+When this code is run generating the pdf dendrogram, samples that cluster separately from the main groups might be considered as potential outliers, as they have relatively higher dissimilarity compared to other samples. 
+This can be particularly useful in genomics or other high-dimensional data analysis to identify samples that might have been processed differently, come from a different batch, or have some other form of systematic difference.
+
+
+### Finalise gene expression data
+### Creates a copy of the datExpr0 data frame or matrix, naming it datExpr. 
+## The reason for making a copy is to keep the original data (datExpr0) unchanged
+## allowing for manipulations or analyses on datExpr without altering the source data.
+
+datExpr <- datExpr0
+
+## Next, retrieve the number of columns from the datExpr data object and assigns it to the nGenes variable. 
+## Assuming that each column corresponds to a gene (or a specific feature), nGenes will store 
+## the total number of genes (or features) present in the dataset.
+
+nGenes <- ncol(datExpr)
+
+## The number of rows in the datExpr data object is counted and stored in the nSamples variable. 
+## If each row corresponds to a sample, then
+## nSamples will represent the total number of samples in the dataset.
+
+nSamples <- nrow(datExpr)
+
+
+The code prepares for further analysis by copying the dataset and retrieving the number of samples and features present in it. These counts (number of samples and genes) can be useful for downstream analyses, iterations, or sanity checks.
+
+
+
+# Load clinical trait data ------------------------------------------------
+## The function read.xls is used to import the first sheet (sheet = 1) of the Excel file into a data frame named allTraits
+### Read Excel file for traits
+allTraits <- read.xls("c2.xls", sheet = 1)
+
+### Extract clinical details for samples in required order
+### Align the samples from the trait data (allTraits) with those in the expression data (datExpr):
+### match(rownames(datExpr), allTraits$Sample) finds the indices of the sample names 
+### from datExpr in the Sample column of allTraits.
+### Using the matched indices (traitRows), relevant rows from allTraits are selected
+### and the first column (sample names) is excluded using allTraits[traitRows, -1]
+### The row names for the new datTraits data frame are then assigned using the matched sample names
+
+traitRows <- match(rownames(datExpr), allTraits$Sample)
+datTraits <- allTraits[traitRows, -1]
+rownames(datTraits) <- allTraits[traitRows, "Sample"]
+
+### keep columns (traits) for which at least 2 values are non-NA
+datTraits <- datTraits[, apply(datTraits, 2, function(x) sum(!is.na(x)) >= 2 )]
+
+###Remove columns (traits) with a constant value across all samples
+### For each column in datTraits, the code checks the unique values of non-missing entries 
+### and retains the column only if there is more than one unique value.
+
+This code imports clinical or trait data from an Excel file, aligns it with a pre-existing gene expression dataset, and then preprocesses the trait data by removing columns with insufficient data or no variability. Such preprocessing is common in bioinformatics and other data-intensive fields to ensure robust subsequent analysis.
+
+
+datTraits <- datTraits[, apply(datTraits, 2, function(x) length(unique(x[!is.na(x)])) != 1)]
+
+# garbage collection
+### R does garbage collection automatically, but there can be occasions when one might 
+### want to invoke it manually, especially after removing large objects from the workspace.
+
+collectGarbage()
+
+# check dimensions
+## Retrieve the dimensions of the object named datTraits
+dim(datTraits)
+
+# using 56 traits
+
+### Plot sample clustering with trait heatmap
+# Visualize the hierarchical clustering of samples from datExpr 
+# Together with a heatmap that displays associated traits from datTraits
+### Computes the hierarchical clustering of samples in datExpr using the average linkage method
+### The result is stored in the sampleTree2 object.
+
+sampleTree2 <- hclust(dist(datExpr), method = "average")
+
+# The function numbers2colors is from an external package used to convert numerical values in datTraits 
+# to colours for visualisation in a heatmap
+# The argument signed = FALSE indicates that all values should be treated 
+# as unsigned (no distinction between positive and negative)
+# The resulting matrix of colors is stored in traitColors.
+
+traitColors <- numbers2colors(as.matrix(datTraits), signed = FALSE) 
+
+# Specify that the subsequent plot should be saved as a PDF file with the provided dimensions 
+# rather than being displayed on the screen.
+
+pdf("outputs/2_sample_clustering_w_hmap.pdf", width = 9, height = 15)
+
+# The function plotDendroAndColors is used to simultaneously plot the sample dendrogram (sampleTree2) 
+# and the associated trait heatmap (traitColors).
+## groupLabels = names(datTraits) specifies the labels for each trait/colour group in the heatmap
+## which would be the column names of datTraits.
+## main provides a title for the plot
+
+plotDendroAndColors(sampleTree2, traitColors,
+                    groupLabels = names(datTraits),
+                    main = "Sample dendrogram and trait heatmap")
+
+# Close the PDF Device
+
+dev.off()
+
+The final output, saved in "outputs/2_sample_clustering_w_hmap.pdf", should show the hierarchical clustering of samples with a side-by-side heatmap representing various traits or features associated with each sample. This visualisation helps in understanding how samples cluster based on their expression data and if there are evident patterns or groupings in the associated trait data.
+
+
+# choosing the soft-thresholding power ------------------------------------
+
+Steps
+1. Different soft-thresholding powers are tested to see how they influence the network topology.
+2. For each power, the topology is checked to see how closely it resembles a scale-free network.
+3. This is typically quantified using the scale-free topology fit index (R^2). A higher R^2 indicates a better fit to a scale-free topology.
+4. The chosen power is the lowest one, where the R^2 value is above a certain threshold (often around 0.8), indicating a good fit to scale-free topology.
+
+
+# This script is for selecting an optimal soft-thresholding power to construct a weighted gene co-expression network
+# using the  WGCNA package in R. 
+# The concept behind this process is to choose a soft-thresholding power such that the 
+# resulting network approximates scale-free topology.
+# Constructing a weighted gene network entails the choice of the soft 
+# thresholding power β to which co-expression similarity is raised to calculate 
+# adjacency. One has proposed to choose the soft thresholding power 
+# based on the criterion of approximate scale-free topology. The use of the 
+# function pickSoftThreshold that performs the analysis of network topology and 
+# aids the user in choosing a proper soft-thresholding power. The user chooses 
+# a set of candidate powers (the function provides suitable default values), 
+# and the function returns a set of network indices that should be inspected.
+
+### candidate powers to analyse
+# This creates a vector of candidate powers ranging from 1 to 10 
+# and then from 12 to 20 in increments of 2.
+powers <- c(c(1:10), seq(from = 12, to=20, by=2))
+
+### Analysis of scale-free topology for soft-thresholding
+# The pickSoftThreshold function from the WGCNA package computes the 
+# scale-free fit index for each candidate power in the powers vector. 
+# This fit index indicates how closely the network's topology follows a scale-free pattern.
+
+sft <- pickSoftThreshold(datExpr, powerVector = powers, verbose = 5)
+
+### Visualise
+# The subsequent lines produce two plots to visualise the results
+# The first plot shows the scale-free topology model fit (R^2) as a function of the soft-thresholding power. 
+# A higher R^2 indicates a better fit to a scale-free topology.
+# The second plot shows the mean connectivity of the network as a function of the soft-thresholding power.
+# The visualisations help determine the lowest power for which the network achieves a scale-free topology.
+
+### This command initialises a new PDF device. 
+# All subsequent plots will be directed to this PDF file (outputs/3_choosing_soft_clustering_thr.pdf) 
+# rather than being shown on the screen. 
+# The specified dimensions of the PDF are 10 units in width and 5 units in height. 
+# Once plotting is finished, it's common to close this device with the dev.off() command, which finalises and saves the PDF
+
+pdf("outputs/3_choosing_soft_clustering_thr.pdf", width = 10, height = 5)
+
+# The par() function sets or adjust graphical parameters in R.
+#  The mfrow = c(1,2) argument configures the plotting device to display plots in a 1-row by 2-column layout. 
+# This means that the next two plots will be shown side by side in the same PDF page.
+
+par(mfrow = c(1,2))
+
+# Next , a variable cex1 is assigned the value 0.9. 
+# The cex parameter in R graphics controls the size of text and symbols. 
+# A value of cex1 = 0.9 indicates that subsequent text or symbols will be drawn at 90% of the default size, 
+# making them slightly smaller.
+cex1 = 0.9
+
+The above section of code prepares the graphics device and plotting parameters 
+for creating visualisations in a 1x2 layout in a PDF file, with a slight reduction in text/symbol size.
+
+# Scale-free topology fit index as a function of the soft-thresholding power
+plot(sft$fitIndices[, 1], -sign(sft$fitIndices[, 3]) * sft$fitIndices[, 2],
+     xlab = "Soft Threshold (power)", 
+     ylab = "Scale Free Topology Model Fit,signed R^2", 
+     type = "n",
+     main = paste("Scale independence"));
+text(sft$fitIndices[, 1], -sign(sft$fitIndices[, 3]) * sft$fitIndices[, 2],
+     labels = powers,cex = cex1,col="red")
+
+# this line corresponds to using an R^2 cut-off of h = 0.68
+abline(h = 0.68, col = "red")
+# Mean connectivity as a function of the soft-thresholding power
+plot(sft$fitIndices[, 1], sft$fitIndices[, 5],
+     xlab = "Soft Threshold (power)", ylab = "Mean Connectivity", type = "n",
+     main = paste("Mean connectivity"))
+text(sft$fitIndices[, 1], sft$fitIndices[, 5], labels = powers, cex = cex1, col = "red")
+dev.off()
+
+# We choose the power 6, which is the lowest power for which the scale-free 
+# topology fit index curve flattens out upon reaching a high value (in this case, roughly 0.68).
+
+
+The above section of code helps determine an optimal soft-thresholding power for constructing a gene co-expression network that closely follows a scale-free topology. This ensures that the resulting network has meaningful and biologically interpretable modules of co-expressed genes.
+
+# One-step network construction and module detection ----------------------
+# The aim if for a one-step network construction and module detection from the gene expression dataset
+# followed by visualisation and extraction of results
+# Thefunction, blockwiseModules (from the WGCNA package in R)
+# Performs both network construction and module detection in one step.
+# datExpr: This is the data matrix containing gene expression values.
+# power = 6: The soft-thresholding power to be used for network construction.
+# TOMType = "unsigned": Specifies that the Topological Overlap Matrix (TOM) should be unsigned. 
+# The TOM measures the network interconnectedness of genes.
+# minModuleSize = 30: The minimum number of genes in a module.
+# Various other parameters adjust the module detection process, such as reassignThreshold, mergeCutHeight, and settings related to the Topological Overlap Matrix (TOM)
+# WGCNA is used to find clusters (or modules) of highly correlated genes, and TOM is a measure that aids in this process by 
+# capturing the network interconnectedness of genes
+
+
+
+The Topological Overlap Matrix (TOM) is a key concept within the framework of Weighted Gene Co-expression Network Analysis (WGCNA). WGCNA is used to find clusters (or modules) of highly correlated genes, and TOM is a measure that aids in this process by capturing the network interconnectedness of genes.
+
+The specifics of TOM are detailed below:
+
+1. Calculating Topological Overlap: 
+   - Topological overlap between two nodes (in this context, genes) in a network captures not just their direct interaction but also their shared interactions with other nodes. In simpler terms, it looks at the similarity in the nodes' broader network neighbourhoods.
+   - The idea is that if two genes not only correlate with each other but also share similar correlation patterns with the same set of other genes, then their interaction might be more biologically meaningful.
+
+2. Mathematical Definition: 
+   - Let's assume \( a \) and \( b \) are two nodes in the network. The topological overlap between \( a \) and \( b \) is given by:
+     \[ \text{TOM}(a,b) = \frac{\sum_u (a_u \cdot b_u) + a_b}{\min(\text{connectivity}(a), \text{connectivity}(b)) + 1 - a_b} \]
+   where \( a_u \) and \( b_u \) are adjacency values for nodes \( a \) and \( b \) with node \( u \), respectively. The "connectivity" of a node is the sum of its adjacencies with all other nodes.
+
+￼
+
+
+
+3. Why TOM is used in WGCNA?**:
+   - Networks often contain noise, i.e., spurious connections. By considering shared neighbours, TOM provides a robust measure that captures deeper network properties, making it less sensitive to this noise.
+   - In biological contexts, genes with similar interaction patterns often participate in the same pathways or processes. Therefore, TOM can help to identify biologically meaningful modules in gene co-expression networks.
+
+4. **Topological Overlap Matrix (TOM)**: 
+   - The TOM is a matrix that captures the topological overlap between all pairs of nodes in the network. If the network has \( N \) nodes, then TOM is an \( N x N \) matrix where the element \( \text{TOM}(i,j) \) represents the topological overlap between nodes \( i \) and \( j \).
+
+￼
+
+5. **Applications in WGCNA**:
+   - TOM is utilised in WGCNA to cluster genes into modules. Specifically, genes with high topological overlap are clustered together.
+   - TOM also creates a network heatmap that visualises the strength of connections between all gene pairs.
+
+In summary, the Topological Overlap Matrix in WGCNA offers a way to measure and visualise the interconnectedness of genes in a network, going beyond direct connections to consider shared interaction patterns. This approach aids in the identification of robust and biologically meaningful modules in gene co-expression networks.
+
+net <- blockwiseModules(datExpr, power = 6,
+                        TOMType = "unsigned", minModuleSize = 30,
+                        reassignThreshold = 0, mergeCutHeight = 0.48,
+                        numericLabels = TRUE, pamRespectsDendro = FALSE,
+                        saveTOMs = FALSE, # changed this to FALSE to save space
+                        # saveTOMFileBase = "patient_blood",
+                        verbose = 3)
+
+### numbers of genes per module
+# The code displays the number of genes in each detected module
+
+table(net$colors)
+
+### Gene dendrogram with modules
+# The following lines produce a PDF plot that shows a dendrogram of the genes and their associated module colours
+# The function labels2colors() is used to convert module labels to colours for plotting.
+# plotDendroAndColors() is used to plot the dendrogram with associated module colours.
+# The resulting plot will be saved to outputs/4_gene_clustering_modules.pdf.
+
+# Convert labels to colours for plotting
+mergedColors <-  labels2colors(net$colors)
+# Plot the dendrogram and the module colours underneath
+pdf("outputs/4_gene_clustering_modules.pdf", width = 12, height = 7)
+plotDendroAndColors(net$dendrograms[[1]], mergedColors[net$blockGenes[[1]]],
+                    "Module colors",
+                    dendroLabels = FALSE, hang = 0.03,
+                    addGuide = TRUE, guideHang = 0.05)
+dev.off()
+
+### Extracting Final Modules Data
+# This section of the code extracts and saves specific information about the modules
+# moduleLabels: A vector of module assignments for each gene
+# moduleColors: A vector of module colours for each gene
+# MEs: Module eigengenes, which summarise the gene expression profile of each module
+# geneTree: The hierarchical clustering dendrogram of genes
+moduleLabels <- net$colors
+moduleColors <- labels2colors(net$colors)
+MEs <- net$MEs
+geneTree <- net$dendrograms[[1]]
+
+
+# Clustering based on specific traits -------------------------------------
+## The code provided carries out the task of visualizing how genes (grouped in modules) are correlated with certain traits
+# The function [gene_trait_corr]  calculates the correlation between genes and selected traits. 
+# Then, it visualises this correlation using colours.
+# ————Inputs to the function——————:
+#[selected_traits]: List of traits that we want to compute the correlation for.
+#[DatTraits]: Data matrix containing trait information
+#[DatExpr]: Data matrix containing gene expression values
+#[ModuleColors]: A vector of colours that represents the module assignment of each gene.
+#[net:] Network information generated by [blockwiseModules]
+#————Function Process————————————: 
+# For each trait, compute the gene significance (GS) score, which is the correlation between gene expression and the trait. 
+# The correlations are then translated into colours using numbers2colors 
+# (high positive correlations coloured red, high negative blue, and low correlations in white, for example)
+#————Function Output————————————:
+#The function returns a matrix (datColors) where each row represents a gene and 
+#columns represent module assignments and trait correlations in colours.
+#————Select Traits and Calculate Correlations—-:
+# All traits from datTraits are selected and their correlation with gene expression data is computed using the gene_trait_corr function.
+
+gene_trait_corr <- function(selected_traits, datTraits, datExpr, moduleColors, net) {
+
+  
+  GS_list <- list()
+  for (trait in selected_traits) {
+    trait_df <- datTraits[, trait, drop = FALSE]
+    
+    GS.trait <- as.numeric(cor(datExpr, trait_df, use = "p"))
+    # This translates the numeric values into colors
+    GS_list[[trait]] <- numbers2colors(GS.trait, signed = T)
+  }
+  
+  datColors <- cbind(moduleColors, do.call(cbind, GS_list))
+  datColors <- datColors[net$blockGenes[[1]], ]
+  
+  colnames(datColors)[2:ncol(datColors)] <- selected_traits
+  return(datColors)
+}
+
+
+### Visualize sample dendrogram with correlations with all traits
+# plotDendroAndColors is used to generate a dendrogram of the genes, with colours underneath that signify module assignments 
+# and correlations with the selected traits.
+# Each branch of the dendrogram represents a gene.
+# Directly under the dendrogram, genes will be colour-coded based on their module assignment.
+#  Beneath the module colours, genes will have additional colour strips that represent their correlation to each of the selected traits.
+# The colours give a visual indication of how each gene (or group of genes) relates to the traits. For instance, a group of genes in a 
+# certain module might be highly correlated with a certain trait, which will be visible as a contiguous strip of the same colour.
+# Here, all the trait names (column headers) from the datTraits dataset are stored in the variable selected_traits. This means one is # selecting all the traits available in the datTraits dataset for further analysis.
+selected_traits <- colnames(datTraits)
+
+
+# The next line of code calls the gene_trait_corr function (that was provided in the previous block above) to compute the correlations # and represent them as colours
+# ———The function is passed several arguments in [brackets] ———
+# [selected_traits]: The traits you want to analyse, which in this case are all the traits from datTraits.
+# [DatTraits]: The dataset containing information about the traits
+# [DatExpr]: The dataset with gene expression values
+# [ModuleColors]: A vector indicating the colour-coded module assignment for each gene (i.e., which module each gene belongs to)
+# [Net]: Network information that was generated by the blockwiseModules function in WGCNA.
+# ——————The output of this function, stored in datColors———, is a matrix where:
+# Each row corresponds to a gene.
+# The columns include the module colour assignments and the colour-coded correlation values of each gene with every trait in 
+# selected_traits.
+
+datColors <- gene_trait_corr(selected_traits = selected_traits,
+                             datTraits = datTraits,
+                             datExpr = datExpr,
+                             moduleColors = moduleColors,
+                             net = net)
+
+# Plot the dendrogram and the module colors underneath
+# The dendrogram visualization is saved as a PDF
+pdf("outputs/5_gene_clustering_mods_trait_corrs.pdf", width = 12, height = 12)
+plotDendroAndColors(net$dendrograms[[1]], colors = datColors, 
+                    groupLabels = c("Module colors", selected_traits), 
+                    dendroLabels = FALSE, hang = 0.03,
+                    addGuide = TRUE, guideHang = 0.05)
+dev.off()
+
+The above code segment is set up for the visualization of genes in terms of their module assignment and how they correlate with each trait in the dataset. The resulting datColors matrix provides a color-coded representation where genes can be visualized based on their module membership and how they correlate with the selected traits.
+This allows users to visually discern which modules (groups of co-expressed genes) have strong relationships with certain traits. This is a powerful way to infer potential biological functions or processes that might be influenced by or influence those traits.
+
+
+
+# Quantifying module-trait association ------------------------------------
+
+#### This section of code visualises how genes (grouped in modules) are correlated with certain traits. 
+
+### Recalculate MEs with color labels
+# This code segment is aimed at quantifying the relationship between modules (groupings of co-expressed genes) and certain traits # (clinical or otherwise)
+#Recalculate Module Eigengenes (MEs) with Color Labels:
+# MEs0 <- moduleEigengenes(datExpr, moduleColors)$eigengenes: The Module Eigengene is the first principal component of a 
+# given module and can be considered as a representative of the module's gene expression profile. This line computes the 
+# eigengenes for each module based on the gene expression data (datExpr) and the module assignments (moduleColors).
+# MEs <- orderMEs(MEs0): This arranges the module eigengenes in a certain order.
+
+MEs0 <- moduleEigengenes(datExpr, moduleColors)$eigengenes
+MEs <- orderMEs(MEs0)
+
+### Correlation between MEs and clinical traits
+# Correlation between Module Eigengenes and Clinical Traits:
+#moduleTraitCor <- cor(MEs, datTraits, use = "p"): Calculates the correlation between each module's eigengene and each trait in #datTraits.
+#moduleTraitPvalue <- corPvalueStudent(moduleTraitCor, nSamples): For each correlation value, this calculates the associated p-#value, which indicates the statistical significance of the correlation.
+
+moduleTraitCor <- cor(MEs, datTraits, use = "p")
+moduleTraitPvalue <- corPvalueStudent(moduleTraitCor, nSamples)
+
+### visualize correlations and p-values as heatmap
+# pdf("outputs/6_module_trait_associations.pdf", width = 25, height = 8): This opens a graphical device to save the output as a PDF.
+# Inside the heatmap (labeledHeatmap):
+# Matrix = moduleTraitCor: The heatmap visualizes the correlations.
+# xLabels = names(datTraits) & yLabels = names(MEs): Labels for the x and y axes are the trait names and module names, 
+# respectively.
+# textMatrix: This overlays the correlation values (and their associated p-values) onto the heatmap.
+# colors = blueWhiteRed(50): Specifies the colour scheme for the heatmap, where blue indicates negative correlation, white indicates # no correlation, and red indicates positive correlation.
+# zlim = c(-1,1): Sets the colour limits to the range of correlation values (-1 to 1).
+# dev.off(): Closes the graphical device, effectively saving the heatmap to the specified PDF.
+
+pdf("outputs/6_module_trait_associations.pdf", width = 25, height = 8)
+# Will display correlations and their p-values
+textMatrix <- paste(signif(moduleTraitCor, 2), "\n(",
+                    signif(moduleTraitPvalue, 1), ")", sep = "");
+dim(textMatrix) <- dim(moduleTraitCor)
+par(mar = c(6, 10.5, 3, 3));
+# Display the correlation values within a heatmap plot
+labeledHeatmap(Matrix = moduleTraitCor,
+               xLabels = names(datTraits),
+               yLabels = names(MEs),
+               ySymbols = names(MEs),
+               colorLabels = FALSE,
+               colors = blueWhiteRed(50),
+               textMatrix = textMatrix,
+               setStdMargins = FALSE,
+               cex.text = 0.5,
+               zlim = c(-1,1),
+               main = paste("Module-trait relationships"))
+dev.off()
+
+
+The resultant heatmap provides a visual overview of how each module's eigengene (which summarises the expression profiles of the genes in that module) correlates with each trait. The correlation values and their associated p-values give an idea of the strength and significance of these associations, respectively. This can be extremely valuable in understanding which groups of co-expressed genes (modules) have strong relationships with specific traits.
+
+# Gene relationship to trait and important modules ------------------------
+# This code block aims to quantify two main relationships:
+#[1] The relationship between each gene and every module's eigengene.
+# [2]The relationship between each gene and a specific trait (in this case, "weight").
+
+
+# names (colours) of the modules
+modNames <- substring(names(MEs), 3)
+
+### Correlation of Gene Relationship to Modules:
+#modNames <- substring(names(MEs), 3): Extract the names (or colour designations) of the modules from the eigengenes' names. #The substring function is likely used here to remove a prefix from the original names.
+#geneModuleMembership <- as.data.frame(cor(datExpr, MEs, use = "p")): For each gene, this computes its correlation to each #module's eigengene. A higher correlation indicates that a gene is more central or representative of a given module.
+#MMPvalue <- as.data.frame(corPvalueStudent(as.matrix(geneModuleMembership), nSamples)): This line computes the p-values #for each of the previously calculated correlations, indicating the statistical significance of each gene's association with a module.
+#The naming conventions (using paste) ensure that the columns of geneModuleMembership and MMPvalue are labelled in a #meaningful way, such as "MMBlue" for module membership with the "Blue" module.
+
+geneModuleMembership <- as.data.frame(cor(datExpr, MEs, use = "p"));
+MMPvalue <- as.data.frame(corPvalueStudent(as.matrix(geneModuleMembership),
+                                           nSamples))
+
+names(geneModuleMembership) <- paste("MM", modNames, sep="")
+names(MMPvalue) <- paste("p.MM", modNames, sep="")
+
+### Correlation of all genes with weight
+# Gene Relationship to Weight Trait:
+# weight <- as.data.frame(datTraits$Weight): Extracts the "Weight" trait from the datTraits dataframe.
+# geneTraitSignificance <- as.data.frame(cor(datExpr, weight, use = "p")): For each gene, this computes its correlation with the #”#weight" trait, indicating how each gene's expression relates to variations in weight.
+#GSPvalue <- as.data.frame(corPvalueStudent(as.matrix(geneTraitSignificance), nSamples)): As before, this calculates the p-#values for the correlations, giving a measure of statistical significance for each gene's association with weight.
+#Again, the naming conventions ensure meaningful labelling, such as "GS.weight" for gene significance relative to weight.
+
+
+
+# Define variable weight containing the weight column of datTrait
+weight <- as.data.frame(datTraits$Weight);
+names(weight) <- "weight"
+
+geneTraitSignificance <- as.data.frame(cor(datExpr, weight, use = "p"))
+GSPvalue <- as.data.frame(corPvalueStudent(as.matrix(geneTraitSignificance),
+                                           nSamples))
+
+names(geneTraitSignificance) <- paste("GS.", names(weight), sep="")
+names(GSPvalue) <- paste("p.GS.", names(weight), sep="")
+
+This segment of code quantifies each gene's relationship to both the modules (via the module eigengenes) and a specific trait (weight). Such information can be invaluable in functional genomics and personalised medicine as it pinpoints genes that might be of interest concerning specific physiological traits or conditions.
+
+
+# Intramodular analysis ---------------------------------------------------
+#The provided code defines and uses a function, intramodular_analysis, which serves to visualise and analyse the relationship #between module membership and gene significance for a specific module.
+
+
+#1. **Function Definition: `intramodular_analysis`**:
+#   - **Inputs**:
+#     - `module`: The name/colour of the module to analyse.
+#     - `modNames`: A list of all module names/colors.
+#     - `moduleColors`: A vector specifying the module colour assignment for each gene.
+#     - `geneModuleMembership`: Contains the membership values of genes in different modules.
+#     - `geneTraitSignificance`: Represents the significance of each gene with respect to a particular trait (in this case, body weight).
+#   - **Process**:
+#     - `column <- match(module, modNames)`: Determines the column index of the given module in `geneModuleMembership`.
+#     - `moduleGenes <- moduleColors == module`: Creates a logical vector that is TRUE for genes belonging to the specified 
+# module and FALSE otherwise.
+#     - `verboseScatterplot(...)`: This appears to be a function (presumably from the WGCNA package or a similar utility) that creates # a scatterplot. The scatterplot plots the module membership of genes (in the specified module) against their significance for body 
+# weight. Each dot on the scatterplot represents a gene, and its position indicates how much that gene is #representative of the module (x-axis) and how much it is related to body weight (y-axis).
+#     - `mod_probes <- colnames(datExpr)[moduleColors=="purple"]`: Extracts the names (probably gene/probe names) of the genes #that belong to the purple module. Note: There seems to be a small inconsistency here, as the module colour is hard-coded to #”#purple" rather than using the `module` argument.
+#   - **Output**: The function returns the names of the genes that belong to the specified module.
+#2. **Function Calls**:
+#The function `intramodular_analysis` is then called twice:
+##     1. For the "purple" module.
+##     2. For the "midnightblue" module.
+#In each call, a scatterplot is generated showing the relationship between the module membership and gene significance for body #weight for the genes in the specified module.
+
+intramodular_analysis <- function(module, modNames, moduleColors, geneModuleMembership, geneTraitSignificance) {
+  
+  column <- match(module, modNames)
+  moduleGenes <- moduleColors == module
+  sizeGrWindow(7, 7);
+  par(mfrow = c(1,1));
+  verboseScatterplot(abs(geneModuleMembership[moduleGenes, column]),
+                     abs(geneTraitSignificance[moduleGenes, 1]),
+                     xlab = paste("Module Membership in", module, "module"),
+                     ylab = "Gene significance for body weight",
+                     main = paste("Module membership vs. gene significance\n"),
+                     cex.main = 1.2, cex.lab = 1.2, cex.axis = 1.2, col = module)
+  
+  #return probe IDs belonging to the module
+  mod_probes <- colnames(datExpr)[moduleColors=="purple"]
+  return(mod_probes)
+}
+
+intramodular_analysis(module = "purple",
+                      modNames = modNames,
+                      moduleColors = moduleColors,
+                      geneModuleMembership = geneModuleMembership,
+                      geneTraitSignificance = geneTraitSignificance)
+
+intramodular_analysis(module = "midnightblue",
+                      modNames = modNames,
+                      moduleColors = moduleColors,
+                      geneModuleMembership = geneModuleMembership,
+                      geneTraitSignificance = geneTraitSignificance)
+
+
+This function allows for the exploration of the relationship between how representative a gene is for a specific module (module membership) and how that gene correlates with a particular trait (gene significance). This analysis can help identify genes that are both crucial for a module and significantly related to the trait of interest.
+
+
+# Retrieve genes related to trait -----------------------------------------
+#This comprehensive code snippet focuses on dissecting associations between genes and multiple traits, primarily based on two parameters: gene significance (GS) and module membership (MM).
+
+#1. **Function: `all_probes_trait_module_assoc`**:
+#   - This function creates a comprehensive dataframe capturing the relationship between genes, a particular trait, and their module #associations.
+#   - **Outputs**: A dataframe (`geneInfo_patient`) with the following columns:
+#     - `ProbeID`: Gene/probe identifier.
+#     - Module color assignment for each gene.
+#     - Gene significance (correlation) for the chosen trait.
+#     - P-value for the gene significance.
+#     - Module membership values for all modules and corresponding p-values.
+#2. **Loop Over All Traits**:
+#   - For each trait in `datTraits`, it computes the associations between all genes and the trait and stores it in a list #(`all_probes_assocs`).
+#3. **Filter Genes Based on Significance and Module Membership**:
+#   - For each trait, it filters the genes that:
+#     - Are significantly associated with the trait (p-value ≤ 0.05 and |correlation| ≥ 0.5).
+#     - Belong to modules that are significantly associated with the trait (p-value ≤ 0.05) and show high module membership (|MM| ≥ #0.5).
+#   - The results are stored in a list (`all_trait_assoc_genes`).
+#4. **Count the Number of Associated Genes for Each Trait**:
+#   - It then counts the number of genes associated with each trait and prints it.
+#5. **Annotate and Save**:
+#   - It reads a file `probe_annot.RDS` which likely contains mappings from probe IDs to gene IDs (like ENTREZ_ID).
+#   - For each trait, it annotates the gene identifiers and saves the information to individual CSV files.
+
+
+all_probes_trait_module_assoc <- function(datExpr, datTraits, trait, moduleColors, geneModuleMembership, MMPvalue) {
+  
+  nSamples <- nrow(datExpr)
+  
+  # Define variable containing the selected trait
+  trait_df <- datTraits[, trait, drop = FALSE]
+  names(trait_df) <- "trait"
+  
+  ### correlation between genes and traits
+  gene_trait_Significance <- as.data.frame(cor(datExpr, trait_df, use = "p"))
+  GSPvalue_trait <- as.data.frame(corPvalueStudent(as.matrix(gene_trait_Significance),
+                                                     nSamples))
+  names(gene_trait_Significance) <- paste0("GS.", names(trait_df))
+  names(GSPvalue_trait) <- paste0("p.GS.", names(trait_df))
+  
+  probes <- colnames(datExpr) ##added new
+  geneInfo0_trait <- data.frame(ProbeID = probes,
+                                moduleColor = moduleColors,
+                                gene_trait_Significance,
+                                GSPvalue_trait)
+  # Order modules by their significance for weight
+  modOrder_patient <- order(-abs(cor(MEs, trait_df, use = "p")))
+  
+  # Add module membership information in the chosen order
+  for (mod in 1:ncol(geneModuleMembership)) {
+    oldNames <- names(geneInfo0_trait)
+    geneInfo0_trait = data.frame(geneInfo0_trait, geneModuleMembership[, modOrder_patient[mod]],
+                                 MMPvalue[, modOrder_patient[mod]]);
+    names(geneInfo0_trait) = c(oldNames, paste("MM.",
+                                               modNames[modOrder_patient[mod]], sep=""),
+                               paste("p.MM.", modNames[modOrder_patient[mod]], sep=""))
+  }
+  # Order the genes in the geneInfo variable first by module color
+  
+  geneOrder_patient <- order(geneInfo0_trait$moduleColor, -
+                               abs(geneInfo0_trait$GS.trait));
+  geneInfo_patient <- geneInfo0_trait[geneOrder_patient, ]
+  
+  return(geneInfo_patient) 
+}
+
+all_trait_names <- colnames(datTraits)
+all_probes_assocs <- list()
+for(trait_name in all_trait_names) {
+  all_probes_assocs[[trait_name]] <- all_probes_trait_module_assoc(datExpr = datExpr,
+                                                                   datTraits = datTraits,
+                                                                   trait = trait_name,
+                                                                   moduleColors = moduleColors,
+                                                                   geneModuleMembership = geneModuleMembership,
+                                                                   MMPvalue = MMPvalue)
+}
+
+### For each trait the significant (p.GS ≤ 0.05) genes showing high correlation 
+# (-0.5 ≥ GS ≥ 0.5) were filtered. Then, the genes only from the significant 
+# (p.MM ≤ 0.05) module showing high module membership (-0.5 ≥ MM ≥ 0.5) were 
+# selected
+all_trait_assoc_genes <- list()
+for (trait_name in all_trait_names) {
+  tmp <- all_probes_assocs[[trait_name]]
+  
+  # significant assoc. with trait - p.GS ≤ 0.05
+  tmp <- tmp[tmp$p.GS.trait <= 0.05, ]
+  
+  # showing high correlation (|GS| ≥ 0.5) with trait
+  tmp <- tmp[abs(tmp$GS.trait) >= 0.5, ]
+  
+  ### modules significant and highly correlated with phenotype
+  sig_mods <- moduleTraitPvalue[, trait_name]
+  sig_mods <- sig_mods[sig_mods <= 0.05]
+  
+  cor_mods <- moduleTraitCor[, trait_name]
+  cor_mods <- cor_mods[abs(cor_mods) >= 0.5]
+  
+  selected_modules <- intersect(names(cor_mods), names(sig_mods))
+  module_names <- sub("^ME", "", selected_modules)
+  
+  # p.MM ≤ 0.05 and |MM| ≥ 0.05
+  associated_genes <- data.frame()
+  for (module in module_names) {
+    tmp2 <- tmp[, c("ProbeID", paste0("MM.", module), paste0("p.MM.", module))]
+    # p.MM ≤ 0.05
+    tmp2 <- tmp2[tmp2[, 3] <= 0.05, ]
+    # |MM| ≥ 0.05
+    tmp2 <- tmp2[tmp2[, 2] >=0.5, ]
+    
+    if (nrow(tmp2) != 0) {
+      associated_genes <- rbind(associated_genes,
+                                data.frame(probeID = tmp2$ProbeID,
+                                           module = module,
+                                           MM = tmp2[, 2],
+                                           pMM = tmp2[, 3]))
+    }
+  }
+  
+  all_trait_assoc_genes[[trait_name]] <- associated_genes
+}
+
+### number of genes in all modules associated with each trait
+sapply(all_trait_assoc_genes, nrow)
+
+### annotate gene IDs (entrez IDs required) and save for use
+probe_annot <- readRDS("probe_annot.RDS")
+
+dir.create("outputs/all_trait_associated_genes/")
+
+for (trait_name in names(all_trait_assoc_genes)) {
+  tmp <- all_trait_assoc_genes[[trait_name]]
+  
+  # skip if empty
+  if (nrow(tmp) == 0)
+    next
+  
+  tmp$ENTREZ_ID <- probe_annot$ENTREZ_ID[match(tmp$probeID, probe_annot$PROBEID)]
+  
+  write.csv(tmp, paste0("outputs/all_trait_associated_genes/", trait_name, ".csv"), row.names = FALSE) 
+}
+
+
+The above script systematically examines the relationship between genes and a set of traits by considering how genes are represented in network modules (module membership) and their direct association with each trait (gene significance). This allows for a more nuanced view of gene-trait relationships by taking into account the modular structure of the gene co-expression network.
