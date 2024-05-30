@@ -205,8 +205,7 @@ from sklearn.preprocessing import StandardScaler scaler = StandardScaler()
 X = scaler.fit_transform(X) 
 X
 
-## out out for Cell7
-## Output
+## Cell 7 Output
 
 ```python
 array([[-0.82382452,  0.2450783 , 0.49685634, ..., 1.24174727, 0.40016561, 0.03044505],
@@ -217,8 +216,99 @@ array([[-0.82382452,  0.2450783 , 0.49685634, ..., 1.24174727, 0.40016561, 0.030
        [ 0.75760695,  1.30875147, -0.29209998, ..., 0.31602308, -2.51036368, 2.81499601],
        [-0.03310879,  0.2450783 , 0.66295241, ..., -0.70227352, -0.6073253 , -1.19204074]])
 
+####################################################
+
+## Cell 8
+
+#This code revolves around splitting a dataset into training and testing subsets using `scikit-learn`. The code segment is designed to split a dataset into training and #testing subsets, ensuring that 30% of the data is reserved for testing. It also maintains the class distribution in both subsets and provides a mechanism for #reproducibility. After the split, it then checks and displays the dimensions of the training and testing datasets to verify the split's success.
+#1. `from sklearn.model_selection import train_test_split`:
+   - Imports the `train_test_split` function from the `sklearn.model_selection` module. This function is a utility to split data arrays into two subsets: for training data and for testing data.
+
+#2. `X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.30, stratify=y,  random_state=42)`:
+   - This line splits the data arrays (`X` and `y`) into training and testing subsets.
+   - `X` represents the feature matrix, and `y` represents the labels or target values.
+   - `test_size=0.30`: This means that 30% of the data will be used for testing, and the remaining 70% will be used for training.
+   - `stratify=y`: This ensures that the distribution of classes (or labels) in the training and testing subsets is the same as the distribution in the original `y` dataset. This is particularly important for imbalanced datasets where one class may be underrepresented.
+   - `random_state=42`: This sets a seed for the random number generator, ensuring reproducibility. With the same seed and input data, you'll always get the same split.
+
+#3. `X_train.shape, X_test.shape, y_train.shape, y_test.shape`:
+   - This line will retrieve and display the shapes (dimensions) of the training and testing data arrays:
+     - `X_train.shape`: Shape of the training feature matrix.
+     - `X_test.shape`: Shape of the testing feature matrix.
+     - `y_train.shape`: Shape of the training labels.
+     - `y_test.shape`: Shape of the testing labels.
+   - This can help confirm that the data was split as expected.
 
 
 
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.30, stratify=y, random_state=42)
+ 
+X_train.shape, X_test.shape, y_train.shape, y_test.shape ((20, 20207), (9, 20207), (20,), (9,))
+
+
+############################################
+
+## Cell-9
+
+
+#This code applies PCA to reduce the dimensionality of both the training and testing datasets while retaining 99% of the data's variance. It then prints out the shapes of #the transformed datasets to provide insight into the number of retained principal components 
+
+#1. `pca = PCA(n_components = 0.99)`:
+   - Here, an instance of the `PCA` class (imported from `sklearn.decomposition`) is created with a parameter `n_components` set to `0.99`.
+   - Instead of specifying the number of principal components directly, `0.99` indicates that the PCA should retain enough components to capture 99% of the variance in the data. In other words, the dimensionality of the data will be reduced in such a way that 99% of its variance is retained.
+#2. `X_train = pca.fit_transform(X_train)`:
+   - The `fit_transform` method applies two primary steps:
+     1. `fit`: This calculates the mean and principal components for the provided data (in this case, `X_train`).
+     2. `transform`: This applies the dimensionality reduction on `X_train` using the principal components identified in the `fit` step.
+   - After this operation, `X_train` has fewer features (columns), representing the principal components that capture 99% of the variance in the original training data.
+#3. `X_test = pca.transform(X_test)`:
+   - This line uses the principal components found during the `fit` step on `X_train` to transform the test data, `X_test`. This ensures that both the training and testing data are transformed in the same way. Importantly, note that `fit_transform` is not used here because one does not want to compute new principal components for the test set; instead, one wishes to use the ones found in the training set.
+#4. `print(X_train.shape)`:
+   - This prints the shape (dimensions) of the transformed training dataset, `X_train`, helping to verify how many principal components (features) were retained after applying PCA.
+#5. `print(X_test.shape)`:
+   - This prints the shape (dimensions) of the transformed testing dataset, `X_test`, having the same number of features as `X_train` but a different number of samples (rows).
+
+pca = PCA(n_components = 0.99); pca = PCA(n_components = 0.99) X_train = pca.fit_transform(X_train)
+X_test = pca.transform(X_test) print(X_train.shape) print(X_test.shape)
+
+X_train = pca.fit_transform(X_train) X_test = pca.transform(X_test) print(X_train.shape) print(X_test.shape)
+
+#####################################
+
+###Cell-10
+#This code snippet visualises the explained variance of each principal component and the cumulative explained variance across all components after applying PCA. In essence, #this code provides a visual way to understand the variance explained by the principal components. By observing the plots, one can make decisions, such as determining an #optimal number of components to retain for a certain level of explained variance.
+
+#1. `exp_var_pca = pca.explained_variance_ratio_`:
+   - This extracts the explained variance ratio for each principal component from the fitted PCA object. The explained variance ratio indicates the proportion of the dataset's total variance that is captured by each component.
+
+#2. `cum_sum_eigenvalues = np.cumsum(exp_var_pca)`:
+   - This computes the cumulative sum of the explained variance ratios. It's the running sum of eigenvalues (or explained variance ratios), giving an array where each value is the sum of the current and all previous values.
+
+#3. The next part of the code is about visualising the explained variances:
+
+   - `plt.bar(...)`: This creates a bar chart. Each bar represents the explained variance ratio of an individual principal component.
+   - `plt.step(...)`: This creates a step plot that visualises the cumulative explained variance. It provides a clear picture of how many components are needed to explain a certain amount of the total variance.
+   - `plt.ylabel('Explained variance ratio')`: Label for the y-axis.
+   - `plt.xlabel('Principal component index')`: Label for the x-axis.
+   - `plt.legend(loc='best')`: Adds a legend to the plot, helping identify which plot line or bar corresponds to what. The `loc='best'` argument places the legend in the location that overlays the least amount of data on the plot.
+   - `plt.tight_layout()`: Adjusts the spacing between subplots to improve the layout.
+   - `plt.show()`: Displays the plots.
+
+
+exp_var_pca = pca.explained_variance_ratio_
+## Cumulative sum of eigenvalues; This will be used to create step plot
+# for visualizing the variance explained by each principal component.
+#cum_sum_eigenvalues = np.cumsum(exp_var_pca)
+## Create the visualization plot
+#
+
+plt.bar(range(0,len(exp_var_pca)), exp_var_pca, alpha=0.5, align='center', label='Individual explained variance')
+plt.step(range(0,len(cum_sum_eigenvalues)), cum_sum_eigenvalues, where='mid',label='Cumulative explained variance')
+plt.ylabel('Explained variance ratio')
+plt.xlabel('Principal component index')
+plt.legend(loc='best')
+plt.tight_layout()
+plt.show()
 
 
