@@ -1,11 +1,31 @@
+######### Appendix B1: GSE Quantile Normalisation Script
+######### Data preprocessing pipeline for gene expression analysis.
+######### This code fetches gene expression data from GEO
+######### performs quantile normalisation and log2 transformation
+######### creates a box-and-whisker plot for visualisation
+######### and saves the processed data as CSV files in a specified directory
+
 ################################################## 
-## Project: GEO datasets ## Script purpose: Normalization for GSE13904 
+## Example here GEO dataset Normalisation 
+## Script purpose: Normalization of Dataset GSE13904 
 ################################################## 
+
+### This R code performs several data preprocessing and analysis tasks on gene expression data retrieved from the Gene Expression Omnibus (GEO) database. Here's a step-by-step explanation of what each part of the code does:
+### 1. Install and load necessary libraries:
+### The code begins by installing and loading three R libraries: `preprocessCore`, `GEOquery`, and `limma`.
+### These libraries are required for various data manipulation and analysis tasks.
 
 # BiocManager::install("preprocessCore")  
 library(GEOquery) library(limma) 
 library(preprocessCore)  
+
+## 2. Set options for downloading files:
+## The `options` function is used to set a specific method for downloading files when using the `GEOquery` library. 
+## In this case, it sets the download method to 'wget'
+## which is a command-line utility for downloading files.
+
 options('download.file.method.GEOquery' = 'wget')  
+
 # load series and platform data from GEO 
 gset <- getGEO("GSE13904", GSEMatrix = TRUE, getGPL = FALSE) 
 length(gset) 
@@ -29,13 +49,8 @@ write.csv(ex, file.path("GSE13904_data", "GSE13904_expression.csv")) 
 write.csv(pData(gset), file.path("GSE13904_data", "GSE13904_phenotype.csv")) 
 write.csv(fData(gset), file.path("GSE13904_data", "GSE13904_features.csv")) 
 
-This R code performs several data preprocessing and analysis tasks on gene expression data retrieved from the Gene Expression Omnibus (GEO) database. Here's a step-by-step explanation of what each part of the code does:
 
-1. Install and load necessary libraries:
-   - The code begins by installing and loading three R libraries: `preprocessCore`, `GEOquery`, and `limma`. These libraries are required for various data manipulation and analysis tasks.
 
-2. Set options for downloading files:
-   - The `options` function is used to set a specific method for downloading files when using the `GEOquery` library. In this case, it sets the download method to 'wget', which is a command-line utility for downloading files.
 
 3. Retrieve data from GEO:
    - The `getGEO` function is used to retrieve gene expression data associated with the GEO accession number "GSE13904". It specifies that it should fetch the GSEMatrix (gene expression matrix) and not the platform data (getGPL = FALSE). The result, `gset`, is a list.
