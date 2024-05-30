@@ -1,0 +1,264 @@
+Appendix A4: ORA for Cytospace
+
+##################################################
+## Project: Time Course Gene Expression
+## Script purpose: ORA - enrichment analysis for use
+## with EnrichMap on Cytoscape
+##################################################
+
+# Input file requirement
+# The Input files required: allGOnKEGG.gmt, PELOD_48hrs.csv
+
+# Modify here -------------------------------------------------------------
+# the path to input CSV
+# The provided code snippet is written in the R programming language and specifies paths for input and output files 
+# related to some data processing
+# Modify according to time related CSV [0hrs, 24 hours or 48 hours]
+# The CSV file name contains data related to the PELOD (Pediatric Logistic Organ Dysfunction) score at 48 hours
+
+input_file <- "/users/asrarrashid/Desktop/Dropbox/My Work/My Research/Asrar_Ph_D/Rwork/Cytoscape/PELOD_48hrs.csv"
+
+# the path to output files
+# The next line sets the path for the CSV output file. After processing the input data, results will be saved in a file named 
+# PELOD_48hrs_enrichment_results.csv
+
+output_CSV <- "PELOD_48hrs_enrichment_results.csv"
+
+# Similarly, the code line sets the path for a text file output
+# After processing, another version of the results will be saved as a text file named as below
+
+output_tab <- "PELOD_48hrs_enrichment_results.txt"
+
+# GMT files are used in gene set enrichment analysis to describe gene sets
+# The filename suggests that it contains gene sets based on Gene Ontology (GO) and 
+# KEGG (Kyoto Encyclopedia of Genes and Genomes) databases
+
+gmt_path <- "allGOnKEGG_June2020.gmt"
+
+# Run this ----------------------------------------------------------------
+# input genes
+# operations below are related to reading and processing input gene data
+
+# Next line reads a CSV file whose path is stored in the input_file variable and assigns the resulting dataframe to the trait_genes 
+# variable. The read.csv() function in R reads data from CSV files.
+
+trait_genes <- read.csv(input_file)
+
+
+# Next, code extracts the ENTREZ_ID column from the trait_genes dataframe. 
+# The unique() function is then applied to this column to remove any duplicate Entrez gene IDs, and the resulting list of unique gene # IDs is stored in the genelist variable. 
+# Entrez IDs are specific identifiers assigned to genes and can be used to retrieve gene-related information from various databases.
+
+genelist <- unique(trait_genes$ENTREZ_ID)
+
+
+# Remove any NA (Not Available) values from the genelist. 
+# The is.na() function is used to check each element of genelist for NA values. 
+# The ! operator negates the logical values returned by is.na()
+# meaning that this line retains only the values in genelist that are not NA.
+
+genelist <- genelist[!is.na(genelist)]
+
+# print the contents of the genelist variable to the console. 
+# To inspect the data after processing.
+
+genelist
+
+In summary, the above reads in a CSV file containing gene data, extracts and de-duplicates the Entrez gene IDs from this file, removes any missing values (NAs), and then displays the cleaned-up list of gene IDs.
+
+
+
+####—————————Defines the structure of a dataframe named `tabledata` 
+# This is intended to store results about some kind of pathway analysis
+# Here's a breakdown of the code:
+# 1. **tabledata= data.frame(...)**:
+# This line initializes a new dataframe called `tabledata`.
+# 2. **pathwayid= character()**:
+# This creates a column named `pathwayid` in the dataframe. The column is intended to store character values (strings). The 
+# function `character()` with no arguments returns an empty character vector, indicating that this column is initially empty.
+# 3. **pathwayname= character()**:
+# Similarly, this creates a column named `pathwayname` in the dataframe, intended for character values, and is also initially empty.
+# 4. **Pvalue = double()**:
+# This creates a column named `Pvalue` that is intended to store double-precision floating-point numbers. The function `double()` with no arguments returns an empty numeric vector of type double. This column would likely store p-values from statistical tests.
+# 5. **Oddsratio = double()**:
+# This defines a column named `Oddsratio`, which will store double-precision floating-point numbers
+# The odds ratio is a measure used in statistics to quantify the strength of association between two events 
+# In the context of pathways, it might indicate the likelihood that a given gene or set of genes is associated with a particular pathway
+# 6. **stringsAsFactors=FALSE**:
+# This argument specifies that when adding data to this dataframe, any strings should not be converted to factors. 
+# Factors are a data type in R used for categorical variables. 
+# By default, earlier versions of R would automatically convert character strings in dataframes to factors. 
+# This behavior can be problematic when you don't want or expect the conversion, so setting `stringsAsFactors=FALSE` ensures that # strings remain as character type.
+
+
+#define the format of the result table
+tabledata= data.frame( pathwayid= character(), pathwayname= character(), Pvalue = double(), Oddsratio = double(), stringsAsFactors=FALSE)
+
+The code above defines an empty dataframe named `tabledata` with the structure to store results of some pathway-related analysis. The table is intended to have columns for pathway IDs, pathway names, p-values, and odds ratios.
+
+
+# Load specific libraries and input data required for a subsequent analysis
+
+# Load the GeneOverlap library. 
+#GeneOverlap is an R package used for testing and visualizing gene overlap between two gene lists. 
+#This package is useful for various bioinformatics analyses to understand the significance of overlap between two gene sets.
+library(GeneOverlap)
+
+# —Load the cogena library
+# cogena stands for "co-expressed gene-set enrichment analysis"
+# It is an R package that can be used for gene-set enrichment but also considers gene-gene co-expression patterns
+# This can help in understanding the functional implications of co-expressed genes in certain conditions.
+library(cogena)
+
+# —The dplyr library is loaded here. 
+# dplyr is a popular R package for data manipulation
+# providing a suite of functions that make it easier to filter, select, group, and mutate data frames.
+library(dplyr)
+
+#—load data input
+# Next use the gmt2list function (from one of the loaded libraries) 
+#This converts a GMT (Gene Matrix Transposed) file into a list format in R
+#GMT files are used to describe gene sets, typically in gene set enrichment analysis
+#The path to the GMT file is stored in the gmt_path variable
+#The converted list is then stored in the allGOnKEGG variable
+#This GMT file contains gene sets from both the Gene Ontology (GO) 
+#and the Kyoto Encyclopedia of Genes and Genomes (KEGG) databases
+allGOnKEGG= gmt2list(gmt_path)
+
+#——PAIRWISE COMPARISONS——
+#loop and pairwise comparison between each pathway and the input genelist using geneoverlap (one-sided FET)
+
+
+#Initiate a for-loop, which will iterate through each item in the allGOnKEGG list. 
+#Each iteration will access one pathway from this list.
+for (i in 1:length(allGOnKEGG)) 
+
+# Inside the loop, the current pathway (the ith item from allGOnKEGG) is converted to a dataframe. 
+# From this dataframe, the first column is extracted and stored in the pathway variable. 
+# This suggests that each entry in allGOnKEGG might be a list or a similar structure 
+# where the actual genes in the pathway are in the first column.
+{
+  pathway= as.data.frame(allGOnKEGG[i])[,1] 
+  
+  # Analysis will only be conducted on pathways with a certain number of genes
+  # Restrict analysis to pathways of size 50 to 1000 genes
+  # This conditional checks the number of genes in the current pathway. 
+  # If the number of genes is fewer than 50 or more than 1000, then
+  # the following code block (which is currently only the next() function) is executed.
+  if (length(pathway) <50  | length(pathway) > 1000) 
+  # The next function skips the rest of the current iteration of the loop and proceeds to the next iteration.
+  #  In this context, if a pathway has fewer than 50 genes or more than 1000 genes, 
+  #  the loop will skip that pathway and move on to the next one without performing any further analysis on it.
+  {next()}
+  
+  
+The above R code snippet begins a loop to perform pairwise comparisons between each pathway in the list allGOnKEGG and an input gene list. The comparison is done using a one-sided Fisher's Exact Test (FET) through the GeneOverlap library, although the snippet provided does not show the actual test being executed, it just sets up the loop and some criteria for the pathways to be considered.  
+
+
+  #### use geneoverlap to calculate P value and odds ratio
+  # The purpose of the subsequent lines: to perform an analysis using the GeneOverlap package 
+  # to calculate the p-value and odds ratio of the gene overlap.
+  #### go.obj <- newGeneOverlap(as.vector(genelist), pathway)
+  # This line initializes a new GeneOverlap object with the genes from the input genelist and the current pathway. The as.vector() 
+  # function ensures that genelist is treated as a vector.
+  #### go.obj <- testGeneOverlap(go.obj)
+  # Here, the Fisher's Exact Test is applied to the overlap between the genelist and the pathway to determine statistical significance.
+  ###intersection <- go.obj@intersection
+  #This extracts the genes that are common between the genelist 
+  #and the current pathway and stores them in the intersection variable.
+  #### i_len <- length(intersection)
+  #Calculates the number of genes in the intersection and stores it in i_len.
+  #### if (i_len < 5) {next()}
+  # If the intersection has fewer than 5 genes, the loop skips the current iteration and proceeds to the next pathway.
+  #### print(go.obj)
+  #The GeneOverlap object, which contains the results of the overlap test, is printed to the console. 
+  #This provides details about the   overlap, such as the number of common genes, the p-value, and the odds ratio.
+  ### tabledata[i, 3] = go.obj@pval
+  #This stores the p-value of the overlap in the third column (Pvalue) of the tabledata dataframe for the current pathway.
+  #tabledata[i, 4] = go.obj@odds.ratio
+  #This saves the odds ratio of the overlap in the fourth column (Oddsratio) of the tabledata dataframe for the current pathway.
+  ###tabledata[i, 1] = names(allGOnKEGG[i])
+  #This stores the name (which doubles as the ID given the second similar line) of the current pathway     
+  #in the first column (pathwayid) of the tabledata dataframe.
+  ###tabledata[i, 2] = names(allGOnKEGG[i])
+  # This again stores the name of the current pathway in the second column (pathwayname) of the tabledata dataframe.
+
+
+  go.obj <- newGeneOverlap(as.vector(genelist), pathway)
+  go.obj <- testGeneOverlap(go.obj)
+ 
+  #### Restrict analysis to pathways intersection > 5
+  # This comment explains that any pathway with fewer than 5 overlapping genes 
+  # with the genelist will be skipped in the subsequent # analysis.
+  intersection <- go.obj@intersection
+  i_len <- length(intersection)
+  if (i_len < 5)
+  {next()}
+  print(go.obj)
+  tabledata[i, 3] = go.obj@pval
+  tabledata[i, 4] = go.obj@odds.ratio
+  ####Manipulation of string to get desired pathway name and pathway ID
+  #This comment indicates the purpose of the subsequent lines, 
+  #which seems to involve extracting and storing the pathway name and ID.
+  tabledata[i, 1] = names(allGOnKEGG[i]) ## MODIFIED so that name matches GMT
+  tabledata[i, 2] = names(allGOnKEGG[i]) ## MODIFIED so that name matches GMT
+  
+The final outcome is that tabledata will contain rows for each pathway that met the criteria, including its ID, name, p-value, and odds ratio from the gene overlap test.
+
+This above code snippet is a continuation of the loop, where each pathway in the list allGOnKEGG is being compared with the input gene list genelist using the GeneOverlap library. The aim is to calculate the p-value and odds ratio of the overlap between each pathway and the input gene list.
+
+
+}
+# For pathways that did not meet the previous size criteria having NA values, the following code removes them. 
+# After cleaning, the pathways are ordered based on their p-values.
+# Remove cells that have NA value (for pathways with size greater than 1000 genes and less than 50 genes) 
+# and reorder in ascending order of p-value
+
+# tabledataALL= tabledata[which(tabledata$pathwayid!= "NA" ),]
+# This line filters out rows where the pathwayid column is NA, creating a refined dataset named tabledataALL.
+
+# tabledataALL= tabledataALL %>% arrange(tabledataALL$Pvalue)
+# Using the dplyr package's arrange function, this line sorts tabledataALL in ascending order of p-values
+
+# Implementation of FDR control and selecting FDR to be less than 0.01
+# A comment indicating that the next lines will implement FDR control and filter results only to include those with an FDR below 0.01
+
+# newp = p.adjust(tabledataALL$Pvalue, method = "fdr", n = length(tabledataALL$Pvalue))
+#This line applies the FDR correction to the p-values in tabledataALL$Pvalue. The adjusted p-values are stored in the newp variable
+
+#tabledataALL= tabledataALL %>% mutate(FDR = newp)
+#The FDR-adjusted p-values (from newp) are added to the tabledataALL dataframe as a new column named "FDR"
+
+#tabledataALL = tabledataALL [which(tabledataALL$FDR< 1 ),]
+#The dataframe is filtered to retain only those rows with an FDR value less than 1 (which is equivalent to 0.01 or 1% when #considering FDR in its typical form)
+
+#Save final result table "tabledataALL" to a csv file in the directory
+#A comment indicating the purpose of the subsequent lines
+
+#write.csv(tabledataALL, output_CSV, row.names=FALSE)
+#This line saves the tabledataALL dataframe as a CSV file. The path and filename for the output are given by the previously defined #variable output_CSV. The row.names=FALSE argument ensures row names are not included in the output file
+
+#write.table(tabledataALL[, c("pathwayid", "pathwayname", "Pvalue", "FDR")], 
+#output_tab, row.names = FALSE, sep = "\t", quote = #FALSE)
+# This line saves selected columns of tabledataALL (pathwayid, pathwayname, Pvalue, and FDR) to a tab-delimited text file.
+# The path and filename for the output are given by the output_tab variable
+# The sep = "\t" argument specifies that the fields should be 
+# separated by tabs, and quote = FALSE ensures that values are not quoted in the output file
+
+tabledataALL= tabledata[which(tabledata$pathwayid!= "NA" ),]
+tabledataALL= tabledataALL %>% arrange(tabledataALL$Pvalue)
+
+#Implementation of FDR control and selecting FDR to be less than 0.01
+
+newp = p.adjust(tabledataALL$Pvalue, method = "fdr", n = length(tabledataALL$Pvalue))
+tabledataALL= tabledataALL %>%  mutate(FDR = newp)
+tabledataALL = tabledataALL [which(tabledataALL$FDR< 1 ),]
+
+#Save final result table "tabledataALL" to a csv file in the directory
+write.csv(tabledataALL, output_CSV, row.names=FALSE)
+
+write.table(tabledataALL[, c("pathwayid", "pathwayname", "Pvalue", "FDR")], output_tab, 
+            row.names = FALSE, sep = "\t", quote = FALSE)
+
+
+The above code processes the initial results from a gene overlap analysis, filters and reorders based on various criteria, applies FDR correction, and then saves the final results to both CSV and tab-delimited text files.
