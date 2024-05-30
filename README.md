@@ -1,18 +1,18 @@
-## APPENDIX B, Contians the Computer Code for the PhD Thesis of Dr Asrar Rashid
+## APPENDIX A, Contians the Computer Code for the PhD Thesis of Dr Asrar Rashid
 
-## Appendix B1: GSE Quantile Normalisation Script
-## Appendix B2: Machine Learning code
-## Appendix B3: WGCNA
-## Appendix B4: ORA for Cytospace
-## Appendix B5: Cytospace Methods 
-## Appendix B6: TTCA
+## Appendix A1: GSE Quantile Normalisation Script
+## Appendix A2: Machine Learning code
+## Appendix A3: WGCNA
+## Appendix A4: ORA for Cytospace
+## Appendix A5: Cytospace Methods 
+## Appendix A6: TTCA
 ### 				        B6.1	Prepare gene expression data for TTCA
 ### 				        B6.2 	Perform TTCA analysis
-### 				B6.3 	Perform TTCA analysis Antigen Dose Studies
-### 				B6.4    Visualise profiles
-### 				B6.5    Enrichment Analysis on Curated Gene Sets
-### 				B6.6    KEGG Enrichment
-### 				B6.7   	Pathind R enrichment analysis
-## Appendix B7: t-test Comparison of Kwan and Emonts datasets 
-## Appendix B8: Enrichment plots
-## Appendix B9: Linear modelling of time-series gene expression data
+### 				A6.3 	Perform TTCA analysis Antigen Dose Studies
+### 				A6.4    Visualise profiles
+### 				A6.5    Enrichment Analysis on Curated Gene Sets
+### 				A6.6    KEGG Enrichment
+### 				A6.7   	Pathind R enrichment analysis
+## Appendix A7: t-test Comparison of Kwan and Emonts datasets 
+## Appendix A8: Enrichment plots
+## Appendix A9: Linear modelling of time-series gene expression data
