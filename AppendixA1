@@ -1,4 +1,4 @@
-######### Appendix B1: GSE Quantile Normalisation Script
+######### Appendix A1: GSE Quantile Normalisation Script
 ######### Data preprocessing pipeline for gene expression analysis.
 ######### This code fetches gene expression data from GEO
 ######### performs quantile normalisation and log2 transformation
