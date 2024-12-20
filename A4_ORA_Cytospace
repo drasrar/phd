@@ -9,6 +9,9 @@ Appendix A4: ORA for Cytospace
 # Input file requirement
 # The Input files required: allGOnKEGG.gmt, PELOD_48hrs.csv
 
+#The file allGOnKEGG_June2020.gmt is a Gene Matrix Transposed (GMT) file that combines annotations from Gene Ontology (GO) and KEGG (Kyoto Encyclopedia of Genes and Genomes). 
+#It serves as a reference for functional categories or pathways, enabling researchers to determine which biological processes or pathways are enriched in a set of genes.
+
 # Modify here -------------------------------------------------------------
 # the path to input CSV
 # The provided code snippet is written in the R programming language and specifies paths for input and output files 
