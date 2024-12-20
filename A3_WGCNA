@@ -1,5 +1,10 @@
 Appendix A3: WGCNA
 
+# WGCNA steps outlined below  
+# 1. Input Data Preparation - What one needs:A table where rows are genes, columns are samples, and the values are gene expression levels.
+##                          - Check the data: Ensure there are no missing values, and normalise if needed. Remove low-variance genes because they don’t contribute much to co-expression patterns.
+
+
 Code Summary is given below, followed by the full code with commentary
 
 # 	Load GE data
