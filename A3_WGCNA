@@ -1,9 +1,37 @@
 Appendix A3: WGCNA
 
 # WGCNA steps outlined below  
-# 1. Input Data Preparation - What one needs:A table where rows are genes, columns are samples, and the values are gene expression levels.
-##                          - Check the data: Ensure there are no missing values, and normalise if needed. Remove low-variance genes because they don’t contribute much to co-expression patterns.
-
+###1. Input Data Preparation
+# What one needs:A table where rows are genes, columns are samples, and the values are gene expression levels.
+# Check the data: Ensure there are no missing values, and normalise if needed. Remove low-variance genes because they don’t contribute much to co-expression patterns.
+###2. Calculate Gene Similarity
+#Think of this step as figuring out which genes behave similarly (are co-expressed).
+#Use correlation (e.g., Pearson correlation) to measure how well the expression of one gene matches another across all samples.
+###3. Create a Network (Adjacency Matrix)
+#The network connects genes that have similar expression patterns.
+#Transform the correlation values into a “network” using a **soft-thresholding power**:
+#This step emphasizes strong correlations and reduces weak ones (soft-thresholding).
+#Choose the power value so that the network satisfies scale-free topology (a biological property of many networks).
+###4. Calculate the Topological Overlap Matrix (TOM)
+#This step refines the network:
+#It measures how connected two genes are, not just directly (correlation), but also through shared neighbours.
+#TOM helps make the network more robust and biologically meaningful.
+###5. Identify Gene Clusters (Modules)
+#Use hierarchical clustering:
+#Group genes into modules (clusters) based on their similarity in the TOM.
+#Each module represents a group of genes with similar co-expression patterns.
+#Dynamic tree cutting:
+#Automatically divides the clustering dendrogram into modules of varying sizes.
+#Assign each module a colour for easy identification (e.g., blue, yellow, turquoise).
+###6. Relate Modules to Traits
+#Test the relationship between the identified modules and your traits of interest (e.g., age, disease status).
+#Use a statistical method (e.g., correlation) to find which modules are most strongly associated with your phenotype.
+###7. Identify Hub Genes
+#Within each module, identify **hub genes**, which are the most connected and influential genes in the module.
+#These are often key players in biological processes and might serve as biomarkers or therapeutic targets.
+###8. Functional Enrichment Analysis
+#Take the genes in each module and analyze them for biological functions, pathways, or processes.
+#Use tools like **Gene Ontology (GO) or KEGG to interpret what the modules represent biologically.
 
 Code Summary is given below, followed by the full code with commentary
 
