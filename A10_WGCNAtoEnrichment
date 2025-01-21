@@ -1,1 +1,80 @@
+##################################################
+## Project: Dr. Asrar - Gene Expression Enrichment
+## Script purpose: ORA - enrichment analysis for use
+## with EnrichMap on Cytoscape
+##################################################
+
+
+# Modify here -------------------------------------------------------------
+# the path to input CSV
+input_file <- "/users/asrarrashid/Desktop/Dropbox/My Work/My Research/Asrar_Ph_D/Rwork/Cytoscape/PELOD_48hrs.csv"
+
+# the path to output files
+output_CSV <- "PELOD_48hrs_enrichment_results.csv"
+output_tab <- "PELOD_48hrs_enrichment_results.txt"
+
+gmt_path <- "allGOnKEGG_June2020.gmt"
+
+# Run this ----------------------------------------------------------------
+# output data
+
+# input genes
+trait_genes <- read.csv(input_file)
+genelist <- unique(trait_genes$ENTREZ_ID)
+genelist <- genelist[!is.na(genelist)]
+genelist
+
+
+#define the format of the result table
+tabledata= data.frame( pathwayid= character(), pathwayname= character(), Pvalue = double(), Oddsratio = double(), stringsAsFactors=FALSE)
+#load required libraries
+library(GeneOverlap)
+library(cogena)
+library(dplyr)
+#load input
+allGOnKEGG= gmt2list(gmt_path)
+
+#loop and pairwase comparison between each pathway and the input genelist using geneoverlap (one sided FET)
+for (i in 1:length(allGOnKEGG)) 
+{
+  pathway= as.data.frame(allGOnKEGG[i])[,1] 
+  
+  # Restrict analysis to pathways of size 50 to 1000 genes 
+  if (length(pathway) <50  | length(pathway) > 1000) 
+  {next()}
+  
+  
+  
+  #use geneoverlap to calculate P value and odds ratio
+  go.obj <- newGeneOverlap(as.vector(genelist), pathway)
+  go.obj <- testGeneOverlap(go.obj)
+  # Restrict analysis to pathways intersection > 5
+  intersection <- go.obj@intersection
+  i_len <- length(intersection)
+  if (i_len < 5)
+  {next()}
+  print(go.obj)
+  tabledata[i, 3] = go.obj@pval
+  tabledata[i, 4] = go.obj@odds.ratio
+  #Manipulation of string to get desired pathway name and pathway ID
+  tabledata[i, 1] = names(allGOnKEGG[i]) ## MODIFIED so that name matches GMT
+  tabledata[i, 2] = names(allGOnKEGG[i]) ## MODIFIED so that name matches GMT
+  
+}
+#remove cells that have NA value (these are the pathways with size greater that 1000 genes and less than 50 genes) and reorder in ascending order of p value
+
+tabledataALL= tabledata[which(tabledata$pathwayid!= "NA" ),]
+tabledataALL= tabledataALL %>% arrange(tabledataALL$Pvalue)
+
+#My implementation of FDR control and selecting FDR to be less than 0.01
+
+newp = p.adjust(tabledataALL$Pvalue, method = "fdr", n = length(tabledataALL$Pvalue))
+tabledataALL= tabledataALL %>%  mutate(FDR = newp)
+tabledataALL = tabledataALL [which(tabledataALL$FDR< 1 ),]
+
+#Save final result table "tabledataALL" to a csv file in the directory
+write.csv(tabledataALL, output_CSV, row.names=FALSE)
+
+write.table(tabledataALL[, c("pathwayid", "pathwayname", "Pvalue", "FDR")], output_tab, 
+            row.names = FALSE, sep = "\t", quote = FALSE)
 
