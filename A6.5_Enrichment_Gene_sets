@@ -1,10 +1,169 @@
-Appendix A6.5: Enrichment Analysis on Curated Gene Sets
+Appendix A6.5: TTCA analysis of Time Series Gene expression Information
+Appendix A6.5: Then Enrichment Analysis on Curated Gene Sets
+
+##################################################
+## Project: Gene Expression Time Series
+##################################################
+
+library(ArrayExpress)
+
+# Process expression data -------------------------------------------------
+
+### Building an R object from the processed data (only processed available)
+# download files
+mexp3850 <- getAE("E-MEXP-3850", path = "E-MEXP-3850")
+
+# identify columns to extract
+cn <- getcolproc(mexp3850)
+cn
+
+## add "Array Data File" column (same as "Sample.Name") to E-MEXP-3850.sdrf.txt to fix an error
+
+# create object
+proset <- procset(mexp3850, cn[2])
+
+# annotate probes
+library(affycoretools)
+library(pd.hugene.1.0.st.v1)
+
+proset <- annotateEset(proset, pd.hugene.1.0.st.v1, columns = c("PROBEID", "ENTREZID", "SYMBOL", "GENENAME"), multivals = "first")
+
+# save for later use
+saveRDS(proset, "mexp3850.RDS")
+
+# TTCA analysis -----------------------------------------------------------
+library(TTCA)
+library(Biobase)
+
+proset <- readRDS("mexp3850.RDS")
+
+### separate control group
+# determine control samples - last samples (except patient 1)
+pheno_data <- pData(proset)
+control_samples <- rownames(pheno_data)[pheno_data$Factor.Value.time.since.admission.to.paediatric.intensive.care.unit. == 48]
+control_samples <- control_samples[control_samples != "H_Patient 1 time 6"]
+
+# create expression data
+all_expr <- exprs(proset)
+control_expr <- all_expr[, control_samples]
+case_expr <- all_expr[, !colnames(all_expr) %in% control_samples]
+
+# repeat control data for 0, 4, 8, 12, 24 and 48 hours, adding a small noise each time
+set.seed(123)
+control_expr <- cbind(control_expr, 
+                      control_expr + sample(1:5 * 1e-4, nrow(control_expr), replace = TRUE),
+                      control_expr + sample(1:5 * 1e-4, nrow(control_expr), replace = TRUE),
+                      control_expr + sample(1:5 * 1e-4, nrow(control_expr), replace = TRUE),
+                      control_expr + sample(1:5 * 1e-4, nrow(control_expr), replace = TRUE),
+                      control_expr + sample(1:5 * 1e-4, nrow(control_expr), replace = TRUE))
+colnames(control_expr) <- paste0("Control", 1:24)
+
+# times of cases
+times_case <- pheno_data$Characteristics.time.since.admission.to.paediatric.intensive.care.unit.[match(colnames(case_expr) , rownames(pheno_data))]
+times_control <- rep(c(0, 4, 8, 12, 24, 48), each = 4)
+
+### annotation data frame
+feat_data <- fData(proset)
+annotation <- data.frame(probeset_id = feat_data$PROBEID, gene_name = feat_data$SYMBOL)
+
+### Fix bugs in TTCA code:
+
+# copy and paste the following where necessary in medianr and medianrS
+# tmp_df <- data.frame(response = as.numeric(dat[i, ]),
+#                      xx = xx)
+# res <- rqss(response ~ qss(xx, lambda = 0.6), tau = 0.5, data = tmp_df)
+
+# fixInNamespace(medianr, "TTCA")
+# fixInNamespace(medianrS, "TTCA")
+
+# copy and paste fixed TTCA function from TTCA_fixed.R
+# fix(TTCA)
+
+
+### run TTCA - takes a long time!
+TTCA_result <- TTCA(grp1 = case_expr, grp1.time = times_case,
+                    grp2 = control_expr, grp2.time = times_control,
+                    annot = annotation,
+                    timeInt = c(8, 12))
+
+saveRDS(TTCA_result, "TTCA_result.RDS")
+
+# Results -----------------------------------------------------------------
+TTCA_result <- readRDS("TTCA_result.RDS")
+
+# Pval columns
+colnames(TTCA_result)[grepl("Pval", colnames(TTCA_result))]
+
+
+# Enrichment analyses -----------------------------------------------------
+library(pathfindR)
+
+### consensus
+# In the consensus score, a gene is considered to be significant, if it is considered significant in at least two scores.
+consensus_df <- TTCA_result[TTCA_result$Pval_ConsensusScore < 0.05, c("gene_name", "Pval_ConsensusScore")]
+
+enrichment_consensus <- run_pathfindR(consensus_df, output_dir = "pathindR_analyses/consensus")
+saveRDS(enrichment_consensus, "pathindR_analyses/consensus/enrichment_consensus.RDS")
+
+enrichment_chart(enrichment_consensus, top_terms = NULL)
+
+
+### early response - 0-8
+early_df <- TTCA_result[TTCA_result$Pval_earlyResponse < 0.05, c("gene_name", "Pval_earlyResponse")]
+
+enrichment_early <- run_pathfindR(early_df, output_dir = "pathindR_analyses/earlyResponse")
+saveRDS(enrichment_early, "pathindR_analyses/earlyResponse/enrichment_early.RDS")
+
+enrichment_chart(enrichment_early, top_terms = NULL)
+
+
+### middle response - 8-12
+middle_df <- TTCA_result[TTCA_result$Pval_middleResponse < 0.05, c("gene_name", "Pval_middleResponse")]
+
+enrichment_middle <- run_pathfindR(middle_df, output_dir = "pathindR_analyses/middleResponse")
+saveRDS(enrichment_middle, "pathindR_analyses/middleResponse/enrichment_middle.RDS")
+
+enrichment_chart(enrichment_middle, top_terms = NULL)
+
+
+### late response - 12-48
+late_df <- TTCA_result[TTCA_result$Pval_lateResponse < 0.05, c("gene_name", "Pval_lateResponse")]
+
+enrichment_late <- run_pathfindR(late_df, output_dir = "pathindR_analyses/lateResponse")
+saveRDS(enrichment_late, "pathindR_analyses/lateResponse/enrichment_late.RDS")
+
+enrichment_chart(enrichment_late, top_terms = NULL)
+
+
+### complete response - 0-48
+complete_df <- TTCA_result[TTCA_result$Pval_completeResponse < 0.05, c("gene_name", "Pval_completeResponse")]
+
+enrichment_complete <- run_pathfindR(complete_df, output_dir = "pathindR_analyses/completeResponse")
+saveRDS(enrichment_complete, "pathindR_analyses/completeResponse/enrichment_complete.RDS")
+
+enrichment_chart(enrichment_complete, top_terms = NULL)
+
+
+### MaxDist
+MaxDist_df <- TTCA_result[TTCA_result$Pval_MaxDist < 0.05, c("gene_name", "Pval_MaxDist")]
+
+enrichment_MaxDist <- run_pathfindR(MaxDist_df, output_dir = "pathindR_analyses/MaxDist")
+saveRDS(enrichment_MaxDist, "pathindR_analyses/MaxDist/enrichment_MaxDist.RDS")
+
+enrichment_chart(enrichment_MaxDist, top_terms = NULL)
+
+### Dynamic
+Dynamic_df <- TTCA_result[TTCA_result$Pval_Dynamic < 0.05, c("gene_name", "Pval_Dynamic")]
+
+enrichment_Dynamic <- run_pathfindR(Dynamic_df, output_dir = "pathindR_analyses/Dynamic")
+saveRDS(enrichment_Dynamic, "pathindR_analyses/Dynamic/enrichment_Dynamic.RDS")
+
+enrichment_chart(enrichment_Dynamic, top_terms = NULL)
+
 
 ##################################################
 ## Project: Time Series - Gene Expression - E-MEXP-3850
 ## Script purpose: Enrichment anaylsis on curated gene sets
-## Date: July 8, 2022
-## Author: Ege Ulgen
 ##################################################
 
 library(TTCA)
